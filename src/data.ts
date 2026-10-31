@@ -1,5 +1,8 @@
+import suppliedArtworks from './supplied-artworks.json';
+
 export type Platform = 'Pinterest' | 'Instagram';
-export type Cluster = 'kungfu' | 'zootopia' | 'frozen' | 'vangogh' | 'monet';
+export type SuppliedCluster = 'mucha' | 'schiele' | 'gesture' | 'klimt' | 'klaus' | 'kungfu-library' | 'shape-language' | 'silhouette' | 'spiderverse' | 'wolfwalkers';
+export type Cluster = 'kungfu' | 'zootopia' | 'frozen' | 'vangogh' | 'monet' | SuppliedCluster;
 export type NodeKind = 'artwork' | 'reference' | 'study' | 'reflection' | 'tutorial';
 
 export interface Artwork {
@@ -64,7 +67,7 @@ export interface Session {
   practice: Practice | null;
 }
 
-export const artworks: Artwork[] = [
+const curatedArtworks: Artwork[] = [
   {
     "id": "kfp-goal",
     "title": "Misty Coast",
@@ -404,9 +407,24 @@ export const artworks: Artwork[] = [
   }
 ];
 
+export const artworks: Artwork[] = [...curatedArtworks, ...suppliedArtworks as Artwork[]];
+export const tutorialArtIds = new Set(curatedArtworks.map(art => art.id));
+
 export const artById = Object.fromEntries(artworks.map(art => [art.id, art])) as Record<string, Artwork>;
 
-export const clusters: Record<Cluster, { name: string; showOnInstagram?: boolean; profileTitle: string; account: string; description: string; subject: string; color: string; root: string; x: number; y: number; labelX: number; labelY: number }> = {
+type CollectionProfile = { name: string; showOnInstagram?: boolean; profileTitle: string; account: string; description: string; subject: string; color: string; root: string; x: number; y: number; labelX: number; labelY: number };
+const suppliedNames: Record<SuppliedCluster, string> = {
+  mucha: 'Alphonse Mucha', schiele: 'Egon Schiele', gesture: 'Gesture Drawing', klimt: 'Gustav Klimt',
+  klaus: 'Klaus', 'kungfu-library': 'Kung Fu Panda Archive', 'shape-language': 'Shape Language',
+  silhouette: 'Silhouette Design', spiderverse: 'Spider-Verse', wolfwalkers: 'Wolfwalkers',
+};
+const suppliedProfiles = Object.fromEntries(Object.entries(suppliedNames).map(([key, name]) => [key, {
+  name, profileTitle: `${name} · Reference collection`, account: `${key.replaceAll('-', '.')}.archive`,
+  description: 'A collection of visual references for small studies', subject: 'Observe, compare & practice',
+  color: '#c5cdb2', root: artworks.find(art => art.cluster === key)!.id, x: 0, y: 0, labelX: 0, labelY: 0,
+}])) as Record<SuppliedCluster, CollectionProfile>;
+
+export const clusters: Record<Cluster, CollectionProfile> = {
   "kungfu": {
     "name": "Kung Fu Panda",
     "profileTitle": "Felicia Chen",
@@ -472,7 +490,8 @@ export const clusters: Record<Cluster, { name: string; showOnInstagram?: boolean
     "y": 700,
     "labelX": 440,
     "labelY": 520
-  }
+  },
+  ...suppliedProfiles
 };
 
 export const sampleNotes = [
@@ -482,8 +501,21 @@ export const sampleNotes = [
 ];
 
 export function notesForArt(artId: string) {
-  const cluster = artById[artId]?.cluster;
-  const content = cluster === 'frozen' ? [
+  const art = artById[artId];
+  const cluster = art?.cluster;
+  const content = art?.tags.includes('ornament') ? [
+    ['Repetition can guide the eye.', 'I traced the largest repeated shapes before copying the small decorations. Their rhythm helped me see how the picture holds together.'],
+    ['A frame is part of the composition.', 'Comparing the border with the central figure helped me notice how a decorative shape can direct attention.'],
+    ['Leave breathing room between patterns.', 'My first study filled every space. Quieter areas made the repeated marks easier to read.'],
+  ] : art?.tags.includes('expressive-line') ? [
+    ['Look for the line of action first.', 'I followed the longest direction through the pose before drawing its outline. It helped me keep the movement in a small study.'],
+    ['A contour can carry weight.', 'I compared the firm and faint edges. Changing the pressure of a few lines made the pose feel less stiff.'],
+    ['Negative space makes a useful check.', 'Looking at the shapes around the figure helped me notice proportions I missed while naming individual body parts.'],
+  ] : art?.image.startsWith('/art/library/') && art.tags.includes('character') ? [
+    ['Read the silhouette before the details.', 'I reduced the character to a flat shape and compared the balance. The pose needed to read before I added features.'],
+    ['A few shapes carry the personality.', 'I compared the largest curves and corners, then tried exaggerating one relationship in my own small study.'],
+    ['Try the same idea in two poses.', 'A second quick attempt helped me see which proportions were essential and which details could change.'],
+  ] : cluster === 'frozen' ? [
     ['Let the light separate the layers.', 'I compared the bright distant castle with the darker cliffs. Grouping those values helped me see how a cold scene can still have a clear focal point.'],
     ['Character shapes carry an expression.', 'I looked at the tilt of the head and the larger curves before trying the small features. That helped me understand the expression.'],
     ['Keep a few edges quiet.', 'I tried leaving the distant shapes less defined. Comparing the studies helped me see where detail actually mattered.'],
@@ -506,12 +538,12 @@ export function notesForArt(artId: string) {
 const people = ['Mina L.', 'Kai R.', 'Jules A.', 'Noor S.', 'Alex T.', 'Sam W.'];
 
 export function makeSeedGraph(): { nodes: AtlasNode[]; links: AtlasLink[] } {
-  const nodes: AtlasNode[] = artworks.map(art => ({ id: art.id, kind: clusters[art.cluster].root === art.id ? 'artwork' : 'reference', cluster: art.cluster, title: art.title, artId: art.id, likes: art.id === 'kfp-goal' ? 48 : art.id === 'zoo-city' ? 37 : 8 + artworks.indexOf(art) * 2 }));
+  const nodes: AtlasNode[] = artworks.map(art => ({ id: art.id, kind: clusters[art.cluster].root === art.id ? 'artwork' : 'reference', cluster: art.cluster, title: art.title, artId: art.id, likes: art.id === 'kfp-goal' ? 48 : art.id === 'zoo-city' ? 37 : 8 + (artworks.indexOf(art) * 17 % 32) }));
   const links: AtlasLink[] = [];
-  for (const [key, cluster] of Object.entries(clusters) as [Cluster, typeof clusters[Cluster]][]) {
+  for (const key of Object.keys(clusters) as Cluster[]) {
     const refs = artworks.filter(art => art.cluster === key);
-    for (const ref of refs) if (ref.id !== cluster.root) links.push({ source: cluster.root, target: ref.id, kind: 'reference' });
-    const count = key === 'frozen' ? 0 : key === 'kungfu' ? 12 : key === 'zootopia' ? 8 : 6;
+    refs.slice(1).forEach((ref, index) => links.push({ source: refs[Math.floor(index / 3)].id, target: ref.id, kind: 'reference' }));
+    const count = key === 'kungfu' ? 12 : key === 'zootopia' ? 8 : key === 'vangogh' || key === 'monet' ? 6 : 0;
     const lead = key === 'zootopia' || key === 'monet' ? 'Jules A.' : 'Mina L.';
     for (let i = 0; i < count; i++) {
       const ref = refs[i % refs.length];
