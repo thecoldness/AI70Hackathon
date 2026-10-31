@@ -7,6 +7,8 @@ import { communityFeatures, featureForId, personalThreads, focusForArt } from '.
 import type { AtlasLink, AtlasNode, Session } from './data';
 import { overviewPreviewIds } from './graphOverview';
 import { isPeerStudy } from './peerStudies';
+import { pathColors } from './pathBranches';
+import type { PathBranch } from './pathBranches';
 
 type PositionedNode = AtlasNode & SimulationNodeDatum & { x: number; y: number };
 const previewIds = overviewPreviewIds(seedGraph.nodes);
@@ -47,7 +49,7 @@ function layoutGraph(): PositionedNode[] {
 
 const positionedSeed = layoutGraph();
 
-export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, pathStep, filter, showPeerStudies, anchorId }: {
+export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, pathStep, filter, showPeerStudies, anchorId, branches }: {
   session: Session;
   mode: 'community' | 'personal';
   selectedId: string | null;
@@ -57,6 +59,7 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
   filter: 'all' | 'popular' | 'quiet';
   showPeerStudies: boolean;
   anchorId: string | null;
+  branches: PathBranch[];
 }) {
   const [camera, setCamera] = useState({ x: 0, y: -35, scale: 1 });
   const [hovered, setHovered] = useState<string | null>(null);
@@ -101,37 +104,40 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
     }
     return { nodes, links, myIds };
   }, [session]);
-  const pathParentIds = new Set(nodes.filter(node => pathNodes.includes(node.id) && isPeerStudy(node)).map(node => node.parentArtId));
-  const pathEdges = new Set(pathNodes.slice(1).map((id, index) => `${pathNodes[index]}:${id}`));
-  const activePath = new Set(pathNodes.slice(0, pathStep < 0 ? undefined : pathStep + 1));
+  const routes = pathNodes.length ? [{ id: 'active', nodes: pathNodes, color: pathColors[0] }] : branches.map((branch, index) => ({ id: branch.id, nodes: branch.nodes, color: pathColors[index % pathColors.length] }));
+  const routeIds = new Set(routes.flatMap(route => route.nodes));
+  const endColors = new Map(routes.map(route => [route.nodes[route.nodes.length - 1], route.color]));
+  const startId = pathNodes[0] || anchorId;
+  const focusedIds = routeIds.size ? routeIds : new Set(anchorId ? [anchorId] : []);
+  const pathParentIds = new Set(nodes.filter(node => routeIds.has(node.id) && isPeerStudy(node)).map(node => node.parentArtId));
+  const pathEdges = new Set(routes.flatMap(route => route.nodes.slice(1).map((id, index) => `${route.nodes[index]}:${id}`)));
+  const activePath = pathNodes.length ? new Set(pathNodes.slice(0, pathStep < 0 ? undefined : pathStep + 1)) : routeIds;
   const pathKey = pathNodes.join('|');
   function isExpanded(node: PositionedNode) {
-    if (isPeerStudy(node)) return showPeerStudies && (revealedIds.has(node.id) || revealedIds.has(node.parentArtId!) || node.id === selectedId || node.parentArtId === selectedId || node.parentArtId === anchorId || node.parentArtId === session.input?.artId || pathNodes.includes(node.id));
-    return previewIds.has(node.id) || revealedIds.has(node.id) || node.id === selectedId || node.id === anchorId || pathNodes.includes(node.id) || pathParentIds.has(node.id) || node.id === session.input?.artId || (myIds.has(node.id) && (mode === 'personal' || node.person === 'You'));
+    if (isPeerStudy(node)) return showPeerStudies && (revealedIds.has(node.id) || revealedIds.has(node.parentArtId!) || node.id === selectedId || node.parentArtId === selectedId || node.parentArtId === anchorId || node.parentArtId === session.input?.artId || routeIds.has(node.id));
+    return previewIds.has(node.id) || revealedIds.has(node.id) || node.id === selectedId || node.id === anchorId || routeIds.has(node.id) || pathParentIds.has(node.id) || node.id === session.input?.artId || (myIds.has(node.id) && (mode === 'personal' || node.person === 'You'));
   }
   const allNodeMap = new Map(nodes.map(node => [node.id, node]));
-  const visibleNodes = nodes.filter(node => !isPeerStudy(node) || (showPeerStudies && isExpanded(allNodeMap.get(node.parentArtId!)!)));
+  const visibleNodes = nodes.filter(node => !isPeerStudy(node) || node.id === startId || endColors.has(node.id) || (showPeerStudies && isExpanded(allNodeMap.get(node.parentArtId!)!)));
   const nodeMap = new Map(visibleNodes.map(node => [node.id, node]));
-  const visiblePathNodes = pathNodes.filter(id => nodeMap.has(id));
-  const showThemeLabels = !pathNodes.length && !anchorId;
+  const showThemeLabels = !routes.length && !anchorId;
   function activateNode(node: PositionedNode) {
     if (!isExpanded(node)) {
       setRevealedIds(previous => new Set(previous).add(node.id));
       setLastRevealed(node.id);
-      return;
     }
     onSelect(node);
   }
 
   function fitGraph() {
-    const visible = pathNodes.length ? visibleNodes.filter(node => pathNodes.includes(node.id) || pathParentIds.has(node.id)) : anchorId ? visibleNodes.filter(node => node.id === anchorId || node.parentArtId === anchorId) : mode === 'personal' && session.started ? visibleNodes.filter(node => myIds.has(node.id)) : visibleNodes;
+    const visible = routes.length ? visibleNodes.filter(node => routeIds.has(node.id) || pathParentIds.has(node.id)) : anchorId ? visibleNodes.filter(node => node.id === anchorId || node.parentArtId === anchorId) : mode === 'personal' && session.started ? visibleNodes.filter(node => myIds.has(node.id)) : visibleNodes;
     if (!visible.length) return;
     const showThemes = showThemeLabels && !(mode === 'personal' && session.started);
     const themes = showThemes ? Object.values(communityFeatures) : [];
     const minX = Math.min(...visible.map(node => node.x), ...themes.map(theme => theme.labelX)) - 85;
     const maxX = Math.max(...visible.map(node => node.x), ...themes.map(theme => theme.labelX + 300)) + 85;
     const minY = Math.min(...visible.map(node => node.y), ...themes.map(theme => theme.labelY)) - 100;
-    const maxY = Math.max(...visible.map(node => node.y)) + 105;
+    const maxY = Math.max(...visible.map(node => node.y)) + 145;
     const scale = Math.min(2.2, 1040 / (maxX - minX), (viewHeight - 85) / (maxY - minY));
     setCamera({ scale, x: 550 - (minX + maxX) / 2 * scale, y: viewHeight / 2 - (minY + maxY) / 2 * scale - 8 });
   }
@@ -150,7 +156,7 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
 
   return <div className={`atlas-canvas ${mode === 'personal' && session.started ? 'personal-view' : ''}`}>
     <div className="canvas-grain" />
-    <svg ref={svgRef} className="network" viewBox={`0 0 1100 ${viewHeight}`} aria-label="Interactive learning atlas. Click a dot to reveal its image, then click the image to explore."
+    <svg ref={svgRef} className="network" viewBox={`0 0 1100 ${viewHeight}`} aria-label="Interactive learning atlas. Select a node to show paths from that point. Colored END markers highlight each destination."
       onWheel={event => { if (event.ctrlKey || event.metaKey) event.preventDefault(); zoom(event.deltaY > 0 ? -0.055 : 0.055); }}
       onPointerDown={event => { if ((event.target as Element).closest('[data-node]')) return; drag.current = { x: event.clientX, y: event.clientY, cameraX: camera.x, cameraY: camera.y, moved: false }; event.currentTarget.setPointerCapture(event.pointerId); }}
       onPointerMove={event => { if (!drag.current || !svgRef.current) return; const ratio = 1100 / svgRef.current.clientWidth; const dx = (event.clientX - drag.current.x) * ratio; const dy = (event.clientY - drag.current.y) * ratio; if (Math.abs(dx) + Math.abs(dy) > 4) drag.current.moved = true; setCamera({ ...camera, x: drag.current.cameraX + dx, y: drag.current.cameraY + dy }); }}
@@ -172,27 +178,33 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
           if (link.kind === 'journey' && !isPath) return null;
           const visible = isMine || isPath || !(mode === 'personal' && session.started);
           const child = link.kind === 'practice' && isPeerStudy(target);
-          return <path key={`edge-${index}`} data-parent-art={child ? source.artId : undefined} className={`graph-edge ${child ? 'peer-child-edge' : ''} ${isMine ? 'mine' : ''} ${isPath ? 'traced' : ''}`} d={child ? `M ${source.x} ${source.y + 65} Q ${source.x} ${target.y - 65} ${target.x} ${target.y - 35}` : `M ${source.x} ${source.y} Q ${(source.x + target.x) / 2 + (index % 2 ? 10 : -10)} ${(source.y + target.y) / 2 - 12} ${target.x} ${target.y}`} opacity={visible ? 1 : 0.08} />;
+          return <path key={`edge-${index}`} data-parent-art={child ? source.artId : undefined} className={`graph-edge ${child ? 'peer-child-edge' : ''} ${isMine ? 'mine' : ''} ${isPath ? 'traced' : ''}`} d={child ? `M ${source.x} ${source.y + 65} Q ${source.x} ${target.y - 65} ${target.x} ${target.y - 35}` : `M ${source.x} ${source.y} Q ${(source.x + target.x) / 2 + (index % 2 ? 10 : -10)} ${(source.y + target.y) / 2 - 12} ${target.x} ${target.y}`} opacity={focusedIds.size && !isPath && !(child && endColors.has(target.id)) ? 0.08 : visible ? 1 : 0.08} />;
         })}
-        {visiblePathNodes.slice(1).map((id, index) => {
+        {routes.flatMap(route => {
+          const visiblePathNodes = route.nodes.filter(id => nodeMap.has(id));
+          return visiblePathNodes.slice(1).map((id, index) => {
           const source = nodeMap.get(visiblePathNodes[index]); const target = nodeMap.get(id);
           if (!source || !target) return null;
-          return <path key={`path-${index}`} className={`path-connection ${pathStep >= 0 && pathNodes.indexOf(id) > pathStep ? 'future' : ''}`} d={`M ${source.x} ${source.y} Q ${(source.x + target.x) / 2} ${(source.y + target.y) / 2 - 25} ${target.x} ${target.y}`} />;
-        })}
+          return <path key={`${route.id}-${index}`} data-route={route.id} data-from-node={source.id} data-to-node={target.id} className={`path-connection ${pathNodes.length && pathStep >= 0 && pathNodes.indexOf(id) > pathStep ? 'future' : ''}`} style={{ stroke: route.color }} d={`M ${source.x} ${source.y} Q ${(source.x + target.x) / 2} ${(source.y + target.y) / 2 - 25} ${target.x} ${target.y}`} />;
+        }); })}
         {[...visibleNodes].sort((a, b) => Number(isExpanded(a)) - Number(isExpanded(b)) || Number(a.id === lastRevealed) - Number(b.id === lastRevealed)).map(node => {
           const isMine = myIds.has(node.id) && session.started;
           const root = node.id === communityFeatures[featureForId(node.artId)].root || node.id === session.input?.artId;
-          const dimmed = (mode === 'personal' && session.started && !isMine) || (filter === 'popular' && node.likes < 16 && !root && !isMine) || (filter === 'quiet' && node.likes > 16 && !root && !isMine) || (pathNodes.length > 0 && !pathNodes.includes(node.id) && !isMine);
+          const dimmed = focusedIds.size ? !focusedIds.has(node.id) && !pathParentIds.has(node.id) : (mode === 'personal' && session.started && !isMine) || (filter === 'popular' && node.likes < 16 && !root && !isMine) || (filter === 'quiet' && node.likes > 16 && !root && !isMine);
           const selected = node.id === selectedId || node.id === lastRevealed;
           const expanded = isExpanded(node);
           const hoveredNode = hovered === node.id;
           const baseSize = root ? 92 : node.kind === 'reflection' ? 23 : node.kind === 'tutorial' ? 46 : isMine ? 65 : isPeerStudy(node) ? 50 : 64;
           const size = baseSize * Math.min(1.55, 1 / Math.sqrt(camera.scale));
           const art = artById[node.artId];
-          const color = isMine || activePath.has(node.id) ? '#d6ebad' : communityFeatures[featureForId(node.artId)].color;
-          return <g key={node.id} data-node={node.id} data-parent-art={node.parentArtId} data-preview={expanded ? 'image' : 'dot'} className={`art-node ${isPeerStudy(node) ? 'peer-study-node' : ''} ${expanded ? 'thumbnail-node' : 'dot-node'} ${selected ? 'selected' : ''} ${isMine ? 'my-node' : ''} ${node.kind === 'study' && node.sample ? 'sample-study' : ''}`} transform={`translate(${node.x} ${node.y})`} opacity={dimmed ? 0.15 : 1} role="button" tabIndex={0} aria-expanded={expanded} aria-label={`${!expanded ? 'Reveal ' : ''}${node.kind}: ${node.title}${node.person ? ` by ${node.person}` : ''}`}
+          const endpointColor = endColors.get(node.id);
+          const color = endpointColor || (isMine || activePath.has(node.id) ? '#d6ebad' : communityFeatures[featureForId(node.artId)].color);
+          const markerSize = expanded ? size : 18;
+          return <g key={node.id} data-node={node.id} data-parent-art={node.parentArtId} data-endpoint={endpointColor ? 'true' : undefined} data-preview={expanded ? 'image' : 'dot'} className={`art-node ${endpointColor ? 'path-endpoint' : ''} ${isPeerStudy(node) && showPeerStudies ? 'peer-study-node' : ''} ${expanded ? 'thumbnail-node' : 'dot-node'} ${selected ? 'selected' : ''} ${isMine ? 'my-node' : ''} ${node.kind === 'study' && node.sample ? 'sample-study' : ''}`} transform={`translate(${node.x} ${node.y})`} opacity={dimmed ? 0.12 : 1} role="button" tabIndex={0} aria-expanded={expanded} aria-label={`${endpointColor ? 'End node: ' : !expanded ? 'Reveal ' : ''}${node.kind}: ${node.title}${node.person ? ` by ${node.person}` : ''}${endpointColor && !showPeerStudies && isPeerStudy(node) ? ' · artwork hidden' : ''}`}
             onClick={() => activateNode(node)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); activateNode(node); } }} onMouseEnter={() => setHovered(node.id)} onMouseLeave={() => setHovered(null)}>
             <title>{node.title}{node.person ? ` · ${node.person} · Demo study` : ''}</title>
+            {endpointColor && <g className="endpoint-decoration"><rect className="endpoint-halo" x={-markerSize / 2 - 13} y={-markerSize / 2 - 13} width={markerSize + 26} height={markerSize + 26} rx="13" fill="none" stroke={endpointColor} strokeWidth="3" /><rect x="-23" y={markerSize / 2 + 17} width="46" height="20" rx="5" fill={endpointColor} /><text y={markerSize / 2 + 31} textAnchor="middle" fontSize="12" fontWeight="700" fill="#20291d">END</text></g>}
+            {node.id === startId && <g className="start-decoration" pointerEvents="none"><rect x="-28" y={-markerSize / 2 - 34} width="56" height="20" rx="5" fill="#d7edaa" /><text y={-markerSize / 2 - 20} textAnchor="middle" fontSize="11" fontWeight="700" fill="#20291d">START</text></g>}
             {!expanded ? <><circle className="dot-hit-area" r="12" fill="transparent" /><circle className="node-dot" r={node.kind === 'reflection' ? 3.5 : 4.5} fill={color} opacity={node.kind === 'reflection' ? 0.6 : 0.9} /><circle className="dot-hover-ring" r="9" fill="none" stroke={color} strokeWidth="1.5" /></> : <>
             {(selected || activePath.has(node.id)) && <rect x={-size / 2 - 9} y={-size / 2 - 9} width={size + 18} height={size + 18} rx={root ? 15 : 12} fill="none" stroke={color} opacity="0.35" strokeWidth="1" />}
             <rect className="node-frame" x={-size / 2 - 3} y={-size / 2 - 3} width={size + 6} height={size + 6} rx={root ? 11 : 7} fill={node.kind === 'reflection' ? '#282b25' : '#252c29'} stroke={selected || isMine ? color : '#566158'} strokeWidth={selected || isMine ? 2 : 0.8} />
@@ -204,7 +216,7 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
             {root && <><circle cx={size / 2 - 3} cy={size / 2 - 2} r="10" fill={color} /><Sparkles x={size / 2 - 9} y={size / 2 - 8} width="12" height="12" color="#263127" /></>}
             </>}
             {expanded && isMine && (node.kind !== 'artwork' || node.id === session.input?.artId) && <text y={size / 2 + 21} textAnchor="middle" fill="#dbe4d1" fontSize="11">{node.id === session.input?.artId ? 'Learning goal · Instagram' : node.kind === 'reflection' ? 'Your reflection' : node.person === 'You' ? 'Your study' : session.captures.find(item => `capture-${item.id}` === node.id)?.platform}</text>}
-            {(hoveredNode || selected) && !isMine && <g className="node-tooltip" transform={`translate(0 ${expanded ? -size / 2 - 31 : -36})`}><rect x={-Math.min(node.title.length * 3.3 + 12, 125)} width={Math.min(node.title.length * 6.6 + 24, 250)} height="24" rx="5" fill="#e5e9df" /><text y="16" textAnchor="middle" fontSize="11" fill="#1c251e">{node.title.length > 35 ? `${node.title.slice(0, 33)}…` : node.title}</text></g>}
+            {(hoveredNode || selected) && !isMine && node.id !== startId && <g className="node-tooltip" transform={`translate(0 ${expanded ? -size / 2 - 31 : -36})`}><rect x={-Math.min(node.title.length * 3.3 + 12, 125)} width={Math.min(node.title.length * 6.6 + 24, 250)} height="24" rx="5" fill="#e5e9df" /><text y="16" textAnchor="middle" fontSize="11" fill="#1c251e">{node.title.length > 35 ? `${node.title.slice(0, 33)}…` : node.title}</text></g>}
             {pathNodes.includes(node.id) && <g transform={`translate(${-size / 2 - 4} ${-size / 2 - 4})`}><circle r="10" fill="#d6ebad" /><text textAnchor="middle" y="4" fontSize="10" fill="#253021" fontWeight="700">{pathNodes.indexOf(node.id) + 1}</text></g>}
           </g>;
         })}
@@ -215,7 +227,7 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
         </g>)}
       </g>
     </svg>
-    <div className="canvas-top-note"><span className="live-spark" /><span>{pathNodes.length ? 'One person’s path. A new way to see.' : session.started && mode === 'personal' ? `1 learning goal · ${session.captures.length} references · ${session.practice ? '1 study' : 'a study waiting to happen'}` : 'A shared atlas of small discoveries'}<small>{lastRevealed ? `${nodeMap.get(lastRevealed)?.title} · click again to explore` : 'Click a dot to reveal its image. Click again to explore.'}</small></span></div>
+    <div className="canvas-top-note"><span className="live-spark" /><span>{pathNodes.length ? 'One person’s path. A new way to see.' : anchorId ? `${branches.length} ${branches.length === 1 ? 'path' : 'paths'} from this node` : 'A shared atlas of small discoveries'}<small>{routes.length ? showPeerStudies ? 'Select an END node to follow its path.' : 'Artwork hidden · END markers still show destinations.' : anchorId ? 'Select another node to explore a recorded continuation.' : 'Select a node to reveal its image and paths.'}</small></span></div>
     {revealedIds.size > 0 && <button className="reset-previews" onClick={() => { setRevealedIds(new Set()); setLastRevealed(null); }}>Reset previews</button>}
     <div className="canvas-legend"><span><i className="dot lime" />Reference</span><span><i className="dot lilac" />Practice</span><span><i className="dot sand" />Reflection</span></div>
     <div className="canvas-tools"><button aria-label="Zoom out" onClick={() => zoom(-0.2)}><Minus size={16} /></button><span>{Math.round(camera.scale * 100)}%</span><button aria-label="Zoom in" onClick={() => zoom(0.2)}><Plus size={16} /></button><div className="tool-separator" /><button aria-label="Fit graph to view" onClick={fitGraph}><Expand size={16} /></button></div>

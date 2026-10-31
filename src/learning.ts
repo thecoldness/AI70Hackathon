@@ -1,6 +1,6 @@
 import { artById, artworks, notesForArt, tutorialArtIds } from './data';
 import type { Artwork, Session } from './data';
-import { owlReferenceId, owlStudies } from './peerStudies';
+import { owlInsights, owlReferenceId, owlStudies } from './peerStudies';
 
 export type LearningFocus = 'world-design' | 'painted-color';
 export type FeatureGroup = 'character' | 'depth' | 'marks' | 'light' | 'line' | 'ornament';
@@ -97,9 +97,12 @@ export function studiesForArt(artId: string): CommunityResource[] {
   return [...generated, ...Array.from({ length: 2 - generated.length }, (_, i) => ({ id: `${artId}-value-exercise-${i}`, parentArtId: artId, kind: 'study' as const, title: i ? 'An edge and color comparison' : 'A simple value comparison', person: 'Trace exercise', image: art.image, imageClass: i ? 'analysis-color' : 'analysis-values', provenance: 'Reference-based analysis · demo exercise', text: i ? 'Compare the strength of the largest color relationships. Which area should hold the clearest edge?' : 'A grayscale view of this reference makes the large light and dark shapes easier to compare. Try your own small study, then return to the original.', likes: 12 - i * 3 }))];
 }
 export function resourcesForArt(artId: string): CommunityResource[] {
+  const insights: CommunityResource[] = artId === owlReferenceId
+    ? owlInsights.map(note => ({ ...note, kind: 'reflection', provenance: 'Illustrative peer insight · demo' }))
+    : notesForArt(artId).map(note => ({ id: note.id, kind: 'reflection', title: note.title, person: note.name, provenance: 'Illustrative peer insight · demo', text: note.text, likes: note.likes }));
   return [
     ...studiesForArt(artId),
-    ...notesForArt(artId).map(note => ({ id: note.id, kind: 'reflection' as const, title: note.title, person: note.name, provenance: 'Illustrative peer insight · demo', text: note.text, likes: note.likes })),
+    ...insights,
     ...(tutorialArtIds.has(artId) ? [{ id: `${artId}-tutorial`, kind: 'tutorial' as const, title: 'Observe, try, compare', person: 'Trace visual lesson', image: artById[artId].image, provenance: '12-second silent tutorial · demo', text: 'A short, playable visual exercise around this exact reference: notice the large relationships, try a simplified study, and compare your choices.', likes: 18, src: `/tutorials/${artId}-study.mp4` }] : []),
   ];
 }

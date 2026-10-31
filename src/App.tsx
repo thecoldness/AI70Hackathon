@@ -5,6 +5,7 @@ import PersonalPaths from './PersonalPaths';
 import ReferenceCommunity from './ReferenceCommunity';
 import { referenceFeeds } from './referenceFeed';
 import { isPeerStudy } from './peerStudies';
+import { pathColors, pathsStartingAt } from './pathBranches';
 import { focusForArt, personalThreads, relevantReferenceIds, studiesForArt } from './learning';
 import TabletFrame, { TraceMark } from './TabletFrame';
 import type { TabletApp } from './TabletFrame';
@@ -86,9 +87,11 @@ export default function App() {
   const path = useMemo(() => {
     if (activePath === null) return null;
     const whole = learningPaths[activePath];
-    const from = traceAnchor ? Math.max(0, whole.nodes.indexOf(traceAnchor)) : 0;
+    const from = traceAnchor ? whole.nodes.indexOf(traceAnchor) : 0;
+    if (from < 0) return null;
     return { ...whole, nodes: whole.nodes.slice(from), captions: whole.captions.slice(from) };
   }, [activePath, traceAnchor]);
+  const branches = useMemo(() => traceAnchor ? pathsStartingAt(traceAnchor) : [], [traceAnchor]);
   const selectedArt = selectedNode ? artById[selectedNode.artId] : rootArt;
   const comparisonNotes = notesForArt(compareArt);
   const visibleOwnNotes = ownNotes.filter(note => (note.artId || 'kfp-goal') === compareArt);
@@ -210,28 +213,23 @@ export default function App() {
   }
 
   function inspectNode(node: AtlasNode) {
-    if (!showPeerStudies && isPeerStudy(node)) return;
-    if (node.kind === 'artwork' || node.kind === 'reference') { openReferenceCommunity(node.artId); return; }
-    const origin = traceAnchor || node.parentArtId || session.input?.artId;
-    if (origin && !path && node.kind === 'study' && node.person !== 'You') {
-      const index = learningPaths.findIndex(p => p.nodes.includes(origin) && p.nodes.includes(node.id) && p.nodes.indexOf(node.id) > p.nodes.indexOf(origin));
-      if (index >= 0) { beginPath(index, true, origin); return; }
-      setToast('No recorded route to this study in the demo. Choose one of the connected examples.');
+    if (path?.nodes.includes(node.id)) {
+      setPathStep(path.nodes.indexOf(node.id)); setSelectedNode(node); setPlaying(false); return;
     }
-    setSelectedNode(node);
-    if (node.kind === 'tutorial') openTutorial(node.artId);
-    if (path?.nodes.includes(node.id)) setPathStep(path.nodes.indexOf(node.id));
+    const destination = branches.find(branch => branch.endId === node.id);
+    if (!path && destination) { beginPath(destination.index, true, traceAnchor); return; }
+    findPathFrom(node.id, node);
   }
 
   function beginPath(index: number, autoplay = false, anchor: string | null = null) {
+    if (!learningPaths[index] || (anchor && !learningPaths[index].nodes.includes(anchor))) return;
     setTraceAnchor(anchor);
     setCommunityArtId(null); setActivePath(index); setPathStep(0); setPlaying(autoplay); setView('atlas'); setTabletApp('trace'); setMode('community');
     setSelectedNode(seedGraph.nodes.find(node => node.id === (anchor || learningPaths[index].nodes[0])) || null);
   }
 
   function chooseDestination() {
-    setCommunityArtId(null); setTraceAnchor(selectedNode?.artId || rootArt.id); setSelectedNode(null); setActivePath(null); setPlaying(false); setMode('community'); setView('atlas'); setTabletApp('trace');
-    setToast('Choose another learner’s study to see a recorded path from your reference.');
+    findPathFrom(selectedNode?.id || rootArt.id, selectedNode || undefined);
   }
 
   function openCompare(artId = selectedNode?.artId || rootArt.id) { setCompareArt(artId); setCompareStudy(0); setModal('compare'); }
@@ -243,7 +241,13 @@ export default function App() {
   }
   function showPersonalPaths() { setMode('personal'); setCommunityArtId(null); setActivePath(null); setTraceAnchor(null); setPlaying(false); }
   function showCommunityOverview() { setMode('community'); setCommunityArtId(null); setActivePath(null); setTraceAnchor(null); setPlaying(false); setSelectedNode(null); }
-  function findPathFrom(artId: string) { setMode('community'); setCommunityArtId(null); setTraceAnchor(artId); setSelectedNode(null); setActivePath(null); setPlaying(false); }
+  function findPathFrom(nodeId: string, fallback?: AtlasNode) {
+    const clicked = seedGraph.nodes.find(node => node.id === nodeId) || fallback;
+    const originId = clicked && (clicked.kind === 'artwork' || clicked.kind === 'reference') ? clicked.artId : nodeId;
+    setMode('community'); setCommunityArtId(null); setTraceAnchor(originId);
+    setSelectedNode(seedGraph.nodes.find(node => node.id === originId) || clicked || null);
+    setActivePath(null); setPathStep(-1); setPlaying(false); setView('atlas'); setTabletApp('trace');
+  }
 
 
 
@@ -274,16 +278,29 @@ export default function App() {
 
   function renderPanel() {
     if (traceAnchor && !path) {
-      const origin = artById[traceAnchor];
-      const available = learningPaths.map((p, index) => ({ ...p, index })).filter(p => p.nodes.includes(traceAnchor) && p.nodes.indexOf(traceAnchor) < p.nodes.length - 1);
-      return <aside className="detail-panel destination-panel"><div className="panel-eyebrow">FROM YOUR STARTING POINT<button className="icon-button" aria-label="Cancel destination selection" onClick={() => setTraceAnchor(null)}><X size={16} /></button></div><div className="trace-origin"><img src={origin.image} alt={origin.title} /><span><small>SHARED REFERENCE</small><strong>{origin.title}</strong></span></div><h2>Where could this lead?</h2><p className="panel-copy">Choose a study on the graph, or explore one below. Follow the references, attempts, and reflections that connected it to your starting point.</p><div className="destination-list">{available.map(p => { const outcome = seedGraph.nodes.find(n => n.id === p.nodes[p.nodes.length - 1])!; return <button key={p.id} className="destination-card" onClick={() => beginPath(p.index, true, traceAnchor)}>{showPeerStudies ? <img src={outcome.image || artById[outcome.artId].image} className={outcome.sample ? 'study-filter filter-1' : ''} alt={outcome.title} data-parent-art={outcome.parentArtId || outcome.artId} /> : <span className="hidden-study-icon"><Route size={20} /></span>}<span><strong>{p.title}</strong><small>{p.name} · {p.nodes.length - p.nodes.indexOf(traceAnchor)} steps</small></span><ArrowRight size={14} /></button>; })}</div>{!available.length && <p className="small-muted">No shared path has been recorded from this reference in the demo. Choose another shared reference to explore a recorded example.</p>}<div className="human-note"><Route size={19} /><p>Follow someone’s actual sequence.<br /><strong>Make your own choices along the way.</strong></p></div></aside>;
+      const originNode = seedGraph.nodes.find(node => node.id === traceAnchor) || selectedNode;
+      const originArt = artById[originNode?.artId || rootArt.id];
+      const hideOrigin = !!originNode && isPeerStudy(originNode) && !showPeerStudies;
+      return <aside className="detail-panel destination-panel"><div className="panel-eyebrow">PATHS FROM THIS NODE<button className="icon-button" aria-label="Clear path selection" onClick={showCommunityOverview}><X size={16} /></button></div>
+        <div className="trace-origin">{hideOrigin ? <span className="hidden-study-icon"><Paintbrush size={18} /></span> : <img src={originNode?.image || originArt.image} alt={originNode?.title || originArt.title} />}<span><small>STARTING NODE</small><strong>{originNode?.title || originArt.title}</strong></span></div>
+        <h2>{branches.length ? `${branches.length} ${branches.length === 1 ? 'path' : 'paths'} from here` : 'No paths from here yet.'}</h2>
+        <p className="panel-copy">{branches.length ? 'Colored END nodes mark the destinations. Select one to follow its path.' : 'This demo has no recorded continuation from this exact node. Try another node or explore the reference community.'}</p>
+        <div className="destination-list">{branches.map((branch, index) => {
+          const outcome = seedGraph.nodes.find(node => node.id === branch.endId)!;
+          return <button key={branch.id} className="destination-card" data-end-node={branch.endId} onClick={() => beginPath(branch.index, true, traceAnchor)}>
+            {showPeerStudies || !isPeerStudy(outcome) ? <img src={outcome.image || artById[outcome.artId].image} className={outcome.sample ? 'study-filter filter-1' : ''} alt={outcome.title} data-parent-art={outcome.parentArtId || outcome.artId} /> : <span className="hidden-study-icon"><Route size={20} /></span>}
+            <span><small className="destination-end-label" style={{ color: pathColors[index % pathColors.length] }}><i style={{ background: pathColors[index % pathColors.length] }} />END · {outcome.title}</small><strong>{branch.title}</strong><small>{branch.name} · {branch.nodes.length} steps</small></span><ArrowRight size={14} />
+          </button>;
+        })}</div>
+        <button className="secondary-button full origin-community-button" onClick={() => openReferenceCommunity(originArt.id)}><Compass size={15} />View reference community<ArrowRight size={14} /></button>
+      </aside>;
     }
     if (path) return <aside className="detail-panel path-panel">
-      <div className="panel-eyebrow">A LEARNER’S PATH<button className="icon-button" aria-label="Close learning path" onClick={() => { setActivePath(null); setTraceAnchor(null); setPlaying(false); setPathStep(-1); }}><X size={16} /></button></div>
+      <div className="panel-eyebrow">A LEARNER’S PATH<button className="icon-button" aria-label="Close learning path" onClick={() => findPathFrom(path.nodes[0])}><X size={16} /></button></div>
       <div className="person-line"><span className="avatar">{path.initials}</span><div><strong>{path.name}</strong><small>Illustrative learner · {path.nodes.length} steps</small></div></div>
       <h2>{path.title}</h2><p className="panel-copy">{path.description}</p>
       <button className="primary-button full" onClick={() => { if (pathStep === path.nodes.length - 1) setPathStep(0); setPlaying(!playing); }}>{playing ? <Pause size={16} /> : <Play size={16} />}{playing ? 'Pause this path' : pathStep === path.nodes.length - 1 ? 'Replay the journey' : 'Follow the journey'}</button>
-      <div className="path-timeline">{path.nodes.map((id, index) => { const node = seedGraph.nodes.find(node => node.id === id)!; const art = artById[node.artId]; return <button key={id} className={`timeline-step ${index === pathStep ? 'current' : ''} ${index <= pathStep ? 'passed' : ''}`} onClick={() => { setPathStep(index); setSelectedNode(node); setPlaying(false); }}><span className="step-number">{index + 1}</span>{!showPeerStudies && isPeerStudy(node) ? <span className="hidden-study-icon" aria-label="Peer study hidden"><Paintbrush size={14} /></span> : <img src={node.image || art.image} alt="" data-parent-art={node.parentArtId} className={node.sample ? 'study-filter filter-1' : ''} />}<span><small>{index === 0 ? 'Starting point' : node.kind}</small><strong>{node.title}</strong></span>{index < pathStep && <Check size={13} />}</button>; })}</div>
+      <div className="path-timeline">{path.nodes.map((id, index) => { const node = seedGraph.nodes.find(node => node.id === id)!; const art = artById[node.artId]; return <button key={id} className={`timeline-step ${index === path.nodes.length - 1 ? 'timeline-endpoint' : ''} ${index === pathStep ? 'current' : ''} ${index <= pathStep ? 'passed' : ''}`} onClick={() => { setPathStep(index); setSelectedNode(node); setPlaying(false); }}><span className="step-number">{index + 1}</span>{!showPeerStudies && isPeerStudy(node) ? <span className="hidden-study-icon" aria-label="Peer study hidden"><Paintbrush size={14} /></span> : <img src={node.image || art.image} alt="" data-parent-art={node.parentArtId} className={node.sample ? 'study-filter filter-1' : ''} />}<span><small>{index === 0 ? 'Starting point' : index === path.nodes.length - 1 ? 'End node' : node.kind}</small><strong>{node.title}</strong></span>{index < pathStep && <Check size={13} />}</button>; })}</div>
       <div className="insight-card"><Quote size={18} /><p>{path.captions[Math.max(0, pathStep)]}</p></div>
       <p className="small-muted">A recorded sequence of choices. Explore it at your own pace.</p><div className="alternate-paths"><span>Another way from here</span>{learningPaths.map((p, i) => i !== activePath && p.nodes.includes(path.nodes[0]) && <button key={p.id} onClick={() => beginPath(i, false, path.nodes[0])}>{p.title}<ArrowRight size={13} /></button>)}</div>
     </aside>;
@@ -390,7 +407,7 @@ export default function App() {
     </header>{!session.started || !session.input ? renderTraceIntro() : <div className={`atlas-layout ${mode === 'personal' || communityArtId ? 'full-trace-layout' : ''}`}><main className="atlas-main">
       {!communityArtId && <div className="atlas-heading"><div><span className="eyebrow">LEARN THROUGH THE PATHS WE LEAVE</span><h1>{mode === 'personal' ? 'Your learning, in parallel.' : 'A map of ways to see.'}</h1><p>{mode === 'personal' ? 'Each question leaves a path of its own.' : 'Shape, color, marks, and spatial relationships.'}</p></div><button className="round-button" aria-label="Export learning path" title="Export your learning path" onClick={downloadJourney}><Download size={17} /></button></div>}
       {renderAtlasToolbar()}
-      {mode === 'personal' ? <PersonalPaths session={session} onReference={openReferenceCommunity} onPractice={() => openCompare(rootArt.id)} onDraw={() => changeView('studio')} /> : communityArtId ? <ReferenceCommunity key={communityArtId} artId={communityArtId} showPeerStudies={showPeerStudies} onPath={index => beginPath(index, true, communityArtId)} session={session} votes={votes} ownNotes={ownNotes} onVote={id => setVotes(old => old.includes(id) ? old.filter(value => value !== id) : [...old, id])} onNote={text => { setOwnNotes(old => [...old, { id: crypto.randomUUID(), text, artId: communityArtId }]); setToast('Your note is connected to this reference.'); }} onOverview={showCommunityOverview} onMyPath={showPersonalPaths} onFindPath={() => findPathFrom(communityArtId)} /> : <><Atlas session={session} mode="community" showPeerStudies={showPeerStudies} anchorId={traceAnchor} selectedId={selectedNode?.id || null} onSelect={inspectNode} pathNodes={path?.nodes || []} pathStep={pathStep} filter={atlasFilter} /><div className="atlas-bottom-bar"><span><i className="online-dot" />Illustrative learning themes</span><button onClick={() => setModal('about')}>Learning is more than the finished piece<ArrowRight size={12} /></button></div></>}
+      {mode === 'personal' ? <PersonalPaths session={session} onReference={openReferenceCommunity} onPractice={() => openCompare(rootArt.id)} onDraw={() => changeView('studio')} /> : communityArtId ? <ReferenceCommunity key={communityArtId} artId={communityArtId} showPeerStudies={showPeerStudies} onPath={index => beginPath(index, true, communityArtId)} session={session} votes={votes} ownNotes={ownNotes} onVote={id => setVotes(old => old.includes(id) ? old.filter(value => value !== id) : [...old, id])} onNote={text => { setOwnNotes(old => [...old, { id: crypto.randomUUID(), text, artId: communityArtId }]); setToast('Your note is connected to this reference.'); }} onOverview={showCommunityOverview} onMyPath={showPersonalPaths} onFindPath={nodeId => findPathFrom(nodeId || communityArtId)} /> : <><Atlas session={session} mode="community" showPeerStudies={showPeerStudies} anchorId={traceAnchor} branches={path ? [] : branches} selectedId={selectedNode?.id || null} onSelect={inspectNode} pathNodes={path?.nodes || []} pathStep={pathStep} filter={atlasFilter} /><div className="atlas-bottom-bar"><span><i className="online-dot" />Illustrative learning themes</span><button onClick={() => setModal('about')}>Learning is more than the finished piece<ArrowRight size={12} /></button></div></>}
     </main>{mode === 'community' && !communityArtId && renderPanel()}</div>}</div>;
   }
 
