@@ -1,4 +1,5 @@
 import suppliedArtworks from './supplied-artworks.json';
+import { owlInsights, owlLearningPaths, owlReferenceId, owlStudies } from './peerStudies';
 
 export type Platform = 'Pinterest' | 'Instagram';
 export type SuppliedCluster = 'mucha' | 'schiele' | 'gesture' | 'klimt' | 'klaus' | 'kungfu-library' | 'shape-language' | 'silhouette' | 'spiderverse' | 'wolfwalkers';
@@ -25,6 +26,8 @@ export interface AtlasNode {
   title: string;
   artId: string;
   person?: string;
+  parentArtId?: string;
+  provenance?: string;
   note?: string;
   likes: number;
   x?: number;
@@ -38,7 +41,7 @@ export interface AtlasNode {
 export interface AtlasLink {
   source: string;
   target: string;
-  kind: 'reference' | 'practice' | 'reflection';
+  kind: 'reference' | 'practice' | 'reflection' | 'journey';
 }
 
 export interface Capture {
@@ -550,7 +553,7 @@ export function makeSeedGraph(): { nodes: AtlasNode[]; links: AtlasLink[] } {
       const id = `${key}-study-${i}`;
       const person = i === 0 || i === 2 ? lead : i === 1 || i === 3 ? 'Kai R.' : people[i % people.length];
       const titles = key === 'kungfu' ? ['Blocking the big shapes', 'A warm & cool study', 'A world with depth', 'A quieter balance'] : key === 'zootopia' ? ['A city in three layers', 'A study of warm light', 'Finding a way through', 'A new sense of scale'] : ['Following the rhythm', 'A study in color', 'Finding the light', 'Looking a little closer'];
-      nodes.push({ id, kind: 'study', cluster: key, title: titles[i % 4], artId: ref.id, person, likes: Math.max(2, 26 - i * 2), sample: true });
+      nodes.push({ id, kind: 'study', cluster: key, title: titles[i % 4], artId: ref.id, parentArtId: ref.id, person, likes: Math.max(2, 26 - i * 2), sample: true });
       links.push({ source: ref.id, target: id, kind: 'practice' });
       if (i % 2 === 0) {
         const reflection = notesForArt(ref.id)[(i / 2) % 3];
@@ -558,8 +561,16 @@ export function makeSeedGraph(): { nodes: AtlasNode[]; links: AtlasLink[] } {
         nodes.push({ id: noteId, kind: 'reflection', cluster: key, title: reflection.title, artId: ref.id, person, note: reflection.text, likes: 8 + i });
         links.push({ source: id, target: noteId, kind: 'reflection' });
       }
-      if (i > 1) links.push({ source: `${key}-study-${i - 2}`, target: id, kind: 'practice' });
+      if (i > 1) links.push({ source: `${key}-study-${i - 2}`, target: id, kind: 'journey' });
     }
+  }
+  for (const study of owlStudies) {
+    nodes.push({ ...study, parentArtId: owlReferenceId, kind: 'study', cluster: 'kungfu-library', note: study.text });
+    links.push({ source: owlReferenceId, target: study.id, kind: 'practice' });
+  }
+  for (const insight of owlInsights) {
+    nodes.push({ ...insight, artId: owlReferenceId, kind: 'reflection', cluster: 'kungfu-library', note: insight.text });
+    links.push({ source: owlReferenceId, target: insight.id, kind: 'reflection' });
   }
   nodes.push({ id: 'tutorial-shapes', kind: 'tutorial', cluster: 'kungfu', title: 'Seeing a world in three value groups', artId: 'kfp-goal', likes: 18, note: 'A demo lesson outline: identify three large value groups, make a small study, and compare how your shapes guide the eye.' });
   links.push({ source: 'kfp-goal', target: 'tutorial-shapes', kind: 'reference' });
@@ -572,6 +583,7 @@ export function makeSeedGraph(): { nodes: AtlasNode[]; links: AtlasLink[] } {
 export const seedGraph = makeSeedGraph();
 
 export const learningPaths = [
+  ...owlLearningPaths,
   { id: 'mina-world', name: 'Mina L.', initials: 'ML', title: 'Making a world feel deep', description: 'From a Kung Fu Panda landscape to a study of shape and light.', nodes: ['kfp-goal', 'kfp-shapes', 'kungfu-study-0', 'kungfu-reflection-0', 'kfp-light', 'kungfu-study-2'], captions: ['Started with a question: what makes this world feel deep?', 'Looked at how the artist simplified mountain shapes.', 'Tried a first study using three large value groups.', 'Noticed that spatial layers mattered more than tiny details.', 'Compared warm light against cool surrounding shapes.', 'Tried again, with a clearer focal point and quieter distance.'] },
   { id: 'jules-worlds', name: 'Jules A.', initials: 'JA', title: 'A detour from mountains to a city', description: 'Following the same question through Kung Fu Panda and Zootopia.', nodes: ['kfp-goal', 'kfp-atmosphere', 'zoo-city', 'zootopia-study-0', 'zootopia-reflection-0', 'zoo-light', 'zootopia-study-2'], captions: ['Began with the layered shapes in a Kung Fu Panda environment.', 'Compared another setting with strong foreground silhouettes.', 'Found a Zootopia city using a similar route for the eye.', 'Tried blocking the city into simple spatial layers.', 'Noticed how the largest shapes lead attention.', 'Compared the way a station frames a small character.', 'Returned to practice with a new understanding of depth and scale.'] },
   { id: 'kai-color', name: 'Kai R.', initials: 'KR', title: 'Letting a small light lead', description: 'Another route through the same starting artwork.', nodes: ['kfp-goal', 'kfp-light', 'kungfu-study-1', 'kfp-atmosphere', 'kungfu-study-3'], captions: ['Started from the same misty coast.', 'Looked for warm and cool relationships in the harbor.', 'Made a small color study.', 'Compared the warm backlight in a different environment.', 'Tried a second study with a quieter palette.'] },
@@ -584,7 +596,7 @@ export const learningPaths = [
 for (const path of learningPaths) {
   path.nodes.slice(1).forEach((id, i) => {
     const source = path.nodes[i];
-    if (!seedGraph.links.some(link => link.source === source && link.target === id)) seedGraph.links.push({ source, target: id, kind: 'reference' });
+    if (!seedGraph.links.some(link => link.source === source && link.target === id)) seedGraph.links.push({ source, target: id, kind: 'journey' });
   });
 }
 

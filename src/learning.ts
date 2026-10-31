@@ -1,5 +1,6 @@
 import { artById, artworks, notesForArt, tutorialArtIds } from './data';
 import type { Artwork, Session } from './data';
+import { owlReferenceId, owlStudies } from './peerStudies';
 
 export type LearningFocus = 'world-design' | 'painted-color';
 export type FeatureGroup = 'character' | 'depth' | 'marks' | 'light' | 'line' | 'ornament';
@@ -10,7 +11,7 @@ export const learningFocuses = {
 };
 
 export const communityFeatures = {
-  character: { title: 'Stylized character design', subtitle: 'Character design', subject: 'Shape, gesture & expression', root: 'kfp-outpost', color: '#e5ca9c', x: 260, y: 260, labelX: 60, labelY: -5 },
+  character: { title: 'Stylized character design', subtitle: 'Character design', subject: 'Shape, gesture & expression', root: owlReferenceId, color: '#e5ca9c', x: 260, y: 260, labelX: 60, labelY: -5 },
   depth: { title: 'Cinematic depth & composition', subtitle: 'Depth & composition', subject: 'Silhouette, scale & atmosphere', root: 'kfp-goal', color: '#a9ceca', x: 810, y: 260, labelX: 625, labelY: -5 },
   line: { title: 'Expressive line & gesture', subtitle: 'Line & gesture', subject: 'Contour, movement & weight', root: artworks.find(art => art.cluster === 'schiele')!.id, color: '#d3b8a6', x: 1300, y: 260, labelX: 1125, labelY: -5 },
   marks: { title: 'Color dabs & visual rhythm', subtitle: 'Color & brushwork', subject: 'Color contrast & directional marks', root: 'starry', color: '#d6e8ad', x: 260, y: 820, labelX: 60, labelY: 595 },
@@ -78,6 +79,7 @@ export interface CommunityResource {
   text: string;
   likes: number;
   src?: string;
+  parentArtId?: string;
 }
 const generatedStudies: Record<string, { image: string; title: string; person: string; text: string }[]> = {
   'kfp-goal': [
@@ -89,9 +91,10 @@ const generatedStudies: Record<string, { image: string; title: string; person: s
 };
 export function studiesForArt(artId: string): CommunityResource[] {
   const art = artById[artId];
-  const generated = (generatedStudies[artId] || []).map((study, i) => ({ ...study, id: `${artId}-peer-study-${i}`, kind: 'study' as const, provenance: 'AI-generated demo study · fictional learner', likes: 24 - i * 5 }));
+  if (artId === owlReferenceId) return owlStudies.map(study => ({ ...study, kind: 'study' as const, parentArtId: owlReferenceId }));
+  const generated = (generatedStudies[artId] || []).map((study, i) => ({ ...study, id: `${artId}-peer-study-${i}`, parentArtId: artId, kind: 'study' as const, provenance: 'AI-generated demo study · fictional learner', likes: 24 - i * 5 }));
   if (generated.length >= 2) return generated;
-  return [...generated, ...Array.from({ length: 2 - generated.length }, (_, i) => ({ id: `${artId}-value-exercise-${i}`, kind: 'study' as const, title: i ? 'An edge and color comparison' : 'A simple value comparison', person: 'Trace exercise', image: art.image, imageClass: i ? 'analysis-color' : 'analysis-values', provenance: 'Reference-based analysis · demo exercise', text: i ? 'Compare the strength of the largest color relationships. Which area should hold the clearest edge?' : 'A grayscale view of this reference makes the large light and dark shapes easier to compare. Try your own small study, then return to the original.', likes: 12 - i * 3 }))];
+  return [...generated, ...Array.from({ length: 2 - generated.length }, (_, i) => ({ id: `${artId}-value-exercise-${i}`, parentArtId: artId, kind: 'study' as const, title: i ? 'An edge and color comparison' : 'A simple value comparison', person: 'Trace exercise', image: art.image, imageClass: i ? 'analysis-color' : 'analysis-values', provenance: 'Reference-based analysis · demo exercise', text: i ? 'Compare the strength of the largest color relationships. Which area should hold the clearest edge?' : 'A grayscale view of this reference makes the large light and dark shapes easier to compare. Try your own small study, then return to the original.', likes: 12 - i * 3 }))];
 }
 export function resourcesForArt(artId: string): CommunityResource[] {
   return [
