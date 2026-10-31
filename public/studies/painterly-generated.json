@@ -1,0 +1,38 @@
+{
+  "collection": "Fictional AI-generated painterly exercise demonstrations",
+  "generatedOn": "2026-10-31",
+  "toolMode": "Built-in image_gen__imagegen",
+  "intent": "generate with local image as visual reference; no original artwork was overwritten",
+  "provenance": "Synthetic demonstration assets created with AI for the Learning Atlas prototype. These are not works made by real learners, users, named community members, or students.",
+  "displayRequirement": "Label these images as AI-generated demo studies wherever they are presented as example practice work.",
+  "assets": [
+    {
+      "id": "starry-color-study",
+      "path": "/studies/starry-color-study.png",
+      "absolutePath": "/Users/thecold/Documents/ChatGPT/What must remain humans/learning-atlas/public/studies/starry-color-study.png",
+      "referencePath": "/Users/thecold/Documents/ChatGPT/What must remain humans/learning-atlas/public/art/vangogh-starry.jpg",
+      "referenceRole": "Reference for directional brush marks, blue-yellow rhythm, night motifs; not an edit target",
+      "defaultGeneratedPath": "/Users/thecold/.codex/generated_images/01a18fdb-41ce-7d40-bb5f-a26d328e59e9/exec-9fafe262-6e9c-4825-bffd-3034db5119ab.png",
+      "prompt": "Use case: stylized-concept\nAsset type: fictional AI-generated practice-study example for an art-learning demo.\nInput image: the attached local Van Gogh Starry Night image is a reference for short directional dabs, rhythmic blue-and-yellow color, a swirling night sky, and a cypress silhouette; it is not an edit target.\nPrimary request: create one new, clearly different small painterly learning study. Keep the motif of a swirling blue night above a modest village and a tall cypress, but change the arrangement: use only five loose yellow stars and one small pale moon, a broad off-center arc of sky brushmarks, a squat village with fewer simplified roofs, and an uneven dark cypress. Focus on short broken dabs and warm/cool color rhythm rather than copying precise shapes or details. The result should visibly feel like an imperfect practice exercise: uneven strokes, simplified forms, slightly awkward spatial relationships, visible underpainting, and a few unresolved edges, with intentional observation of color. Physical oil-paint or gouache texture on canvas paper, 4:3 landscape artwork filling the image. No frame, no UI, no writing, no signature, no watermark. This is a synthetic demonstration asset, not anyone's actual student work.",
+      "transparentBackground": false,
+      "provenance": "AI-generated demonstration, not actual student work",
+      "width": 1448,
+      "height": 1086,
+      "visuallyInspected": true
+    },
+    {
+      "id": "lilies-light-study",
+      "path": "/studies/lilies-light-study.png",
+      "absolutePath": "/Users/thecold/Documents/ChatGPT/What must remain humans/learning-atlas/public/studies/lilies-light-study.png",
+      "referencePath": "/Users/thecold/Documents/ChatGPT/What must remain humans/learning-atlas/public/art/monet-lilies.jpg",
+      "referenceRole": "Reference for water reflections, soft edges and warm/cool color; not an edit target",
+      "defaultGeneratedPath": "/Users/thecold/.codex/generated_images/01a18fdb-41ce-7d40-bb5f-a26d328e59e9/exec-4e9ebe4d-d73e-41b2-8ed3-a052eeae5c3d.png",
+      "prompt": "Use case: stylized-concept\nAsset type: fictional AI-generated practice-study example for an art-learning demo.\nInput image: the attached local Monet Water Lilies image is a reference for pond reflections, soft edges, loose paint handling, and warm/cool relationships; it is not an edit target.\nPrimary request: create one new simplified loose painterly practice study of a lily pond, clearly different from the reference arrangement. Paint a sparse group of broad flat lily pads toward one lower corner, just three small pale pink-and-cream flowers, a soft lavender-blue open patch of reflected sky across the center, and loose downward olive and blue-green reflections near the opposite edge. No bridge and no people. Emphasize a few larger brush shapes, soft lost-and-found edges, warm cream highlights against cool violet water, and visible unblended marks. Make it look like an imperfect exploratory exercise rather than a finished masterwork: uneven coverage, some muddy transitions, unfinished peripheral shapes, and simplified reflections. Physical gouache or oil-paint texture on paper, 4:3 landscape artwork filling the image. No frame, no UI, no writing, no signature, no watermark. This is a synthetic demonstration asset, not anyone's actual student work.",
+      "transparentBackground": false,
+      "provenance": "AI-generated demonstration, not actual student work",
+      "width": 1448,
+      "height": 1086,
+      "visuallyInspected": true
+    }
+  ]
+}

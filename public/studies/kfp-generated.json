@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "purpose": "AI-generated demo studies for fictional learners in the Learning Atlas hackathon prototype. Not actual human student artwork, not evidence of learning gains.",
+  "mode": "built-in image_gen tool",
+  "tool": "image_gen.imagegen",
+  "model": null,
+  "modelNote": "Underlying model name was not exposed by the built-in tool.",
+  "reference": {
+    "file": "../art/concept/kungfu-0000.jpg",
+    "artist": "Felicia Chen",
+    "sourceUrl": "https://felicia-chen.com/kungfupanda4",
+    "role": "composition and scene reference only",
+    "originalPreserved": true
+  },
+  "artworks": [
+    {
+      "file": "kfp-depth-study.png",
+      "publicPath": "/studies/kfp-depth-study.png",
+      "displayTitle": "Depth and Values — AI Demo Study",
+      "label": "AI-generated demo study",
+      "fictionalLearner": true,
+      "isActualStudentWork": false,
+      "sourceGeneratedFile": "/Users/thecold/.codex/generated_images/01a19009-4500-7922-8114-79d105bedcaf/exec-d1eb9e87-8298-43aa-8559-1b1696456992.png",
+      "prompt": "Use case: stylized-concept\nAsset type: AI-generated fictional learner exercise for a painting-learning hackathon prototype.\nInput image 1 is a composition and scene reference only, not an edit target.\nCreate a new, deliberately simplified small gouache study inspired by the wide misty mountain coast in the reference: dark angular foreground cliffs and sparse pine silhouettes, a small cliffside Chinese temple in the middle distance, layered mountains receding into pale blue sea mist, a tiny warm lantern accent. Preserve the panoramic landscape composition and recognizable main scene, but reinterpret it as a rough 15-minute three-value block-in exercise. Omit the foreground characters to concentrate on landscape depth.\nStyle/medium: amateur gouache sketch, large blunt brush shapes, visible opaque brush marks and paper texture, imperfect edges, sparse architectural detail. Use only three principal value groups: dark foreground, medium-blue middle ground, pale distant haze, plus a small muted warm lantern accent. The study should feel exploratory and unfinished, not a polished professional studio painting.\nComposition: wide landscape, approximately 2.3:1, the entire image is the painted study without a mockup or border.\nConstraints: no signatures, no text, no labels, no UI, no watermark. Do not claim this is an actual human student's work; it is a generated example used for a demo.",
+      "mode": "built-in image_gen tool",
+      "generatedImagePreserved": true,
+      "postProcessing": "None. Copied original generated PNG into workspace."
+    },
+    {
+      "file": "kfp-color-study.png",
+      "publicPath": "/studies/kfp-color-study.png",
+      "displayTitle": "Warm/Cool Color Experiment — AI Demo Study",
+      "label": "AI-generated demo study",
+      "fictionalLearner": true,
+      "isActualStudentWork": false,
+      "sourceGeneratedFile": "/Users/thecold/.codex/generated_images/01a19009-4500-7922-8114-79d105bedcaf/exec-de643542-e32c-4240-9479-9121db68cde7.png",
+      "prompt": "Use case: stylized-concept\nAsset type: AI-generated fictional learner color experiment for a painting-learning hackathon prototype.\nInput image 1 is a composition and scene reference only, not an edit target.\nCreate a new, visibly distinct color-study attempt at the same misty mountain-coast scene: broad angular cliff masses and sparse pine silhouettes, a tiny Chinese temple on an isolated rocky promontory, a sea of atmospheric haze and receding mountain ridges, one small glowing lantern. Keep the recognizable wide landscape arrangement of the reference, omitting the foreground characters.\nStyle/medium: expressive amateur gouache exercise, broad blocky brushwork with some more-resolved silhouette edges and a few temple marks; simplified forms rather than rendering. This attempt experiments with warm/cool contrast: desaturated blue-green and lavender mountains, pale peach/coral haze near the horizon, deep indigo foreground, and small ochre-orange temple/lantern accents. Noticeably warmer and more colorful than a blue three-value block-in; a distinct new attempt with its own shape decisions. Keep the amateur practice-painting character and visible brush strokes; not a polished studio-original quality.\nComposition: panoramic landscape, approximately 2.3:1; entire image is the painting, no mockup or border.\nConstraints: no signatures, no text, no labels, no UI, no watermark. This is a generated fictional demo study, not evidence of human learning.",
+      "mode": "built-in image_gen tool",
+      "generatedImagePreserved": true,
+      "postProcessing": "None. Copied original generated PNG into workspace."
+    }
+  ]
+}
+

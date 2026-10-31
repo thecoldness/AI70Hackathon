@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
 import type { SimulationLinkDatum, SimulationNodeDatum } from 'd3-force';
 import { Expand, Minus, Plus, Quote, Route, Sparkles, Video } from 'lucide-react';
-import { artById, clusters, seedGraph } from './data';
+import { artById, seedGraph } from './data';
+import { communityFeatures, featureForId, personalThreads, focusForArt } from './learning';
 import type { AtlasLink, AtlasNode, Session } from './data';
 
 type PositionedNode = AtlasNode & SimulationNodeDatum & { x: number; y: number };
@@ -10,18 +11,18 @@ type PositionedNode = AtlasNode & SimulationNodeDatum & { x: number; y: number }
 function layoutGraph(): PositionedNode[] {
   const counts: Record<string, number> = {};
   const nodes = seedGraph.nodes.map((node, index) => {
-    const cluster = clusters[node.cluster];
-    const n = counts[node.cluster] = (counts[node.cluster] || 0) + 1;
+    const cluster = communityFeatures[featureForId(node.artId)];
+    const n = counts[featureForId(node.artId)] = (counts[featureForId(node.artId)] || 0) + 1;
     const theta = n * 2.39996;
-    const radius = node.kind === 'artwork' ? 0 : 85 + (n % 4) * 29;
-    return { ...node, x: cluster.x + Math.cos(theta) * radius, y: cluster.y + Math.sin(theta) * radius, ...(node.kind === 'artwork' ? { fx: cluster.x, fy: cluster.y } : {}), index } as PositionedNode;
+    const radius = node.id === cluster.root ? 0 : 85 + (n % 4) * 29;
+    return { ...node, x: cluster.x + Math.cos(theta) * radius, y: cluster.y + Math.sin(theta) * radius, ...(node.id === cluster.root ? { fx: cluster.x, fy: cluster.y } : {}), index } as PositionedNode;
   });
   const links = seedGraph.links.map(link => ({ ...link })) as SimulationLinkDatum<PositionedNode>[];
   const simulation = forceSimulation(nodes)
-    .force('link', forceLink<PositionedNode, SimulationLinkDatum<PositionedNode>>(links).id(node => node.id).distance(link => (link.source as PositionedNode).cluster !== (link.target as PositionedNode).cluster ? 350 : 74).strength(0.25))
+    .force('link', forceLink<PositionedNode, SimulationLinkDatum<PositionedNode>>(links).id(node => node.id).distance(link => featureForId((link.source as PositionedNode).artId) !== featureForId((link.target as PositionedNode).artId) ? 350 : 74).strength(0.25))
     .force('charge', forceManyBody().strength(-100))
-    .force('x', forceX<PositionedNode>(node => clusters[node.cluster].x).strength(0.11))
-    .force('y', forceY<PositionedNode>(node => clusters[node.cluster].y).strength(0.11))
+    .force('x', forceX<PositionedNode>(node => communityFeatures[featureForId(node.artId)].x).strength(0.11))
+    .force('y', forceY<PositionedNode>(node => communityFeatures[featureForId(node.artId)].y).strength(0.11))
     .force('collide', forceCollide<PositionedNode>(node => node.kind === 'artwork' ? 54 : node.kind === 'reflection' ? 12 : 30).strength(0.8))
     .stop();
   simulation.tick(220);
@@ -58,34 +59,25 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
   const { nodes, links, myIds } = useMemo(() => {
     const nodes: PositionedNode[] = positionedSeed.map(node => ({ ...node }));
     const links: AtlasLink[] = seedGraph.links.map(link => ({ ...link }));
-    const rootId = session.input?.artId || clusters[session.artist].root;
-    const myIds = new Set<string>([rootId]);
-    let prev = rootId;
-    const origin = clusters[session.artist];
-    session.captures.forEach((capture, index) => {
-      const art = artById[capture.artId];
-      const id = `capture-${capture.id}`;
-      const x = origin.x - 170 + (index % 4) * 105;
-      const y = origin.y + 155 + Math.floor(index / 4) * 100 + (index % 2) * 25;
-      nodes.push({ id, kind: 'reference', title: art.title, artId: art.id, cluster: session.artist, likes: 0, x, y });
-      links.push({ source: prev, target: id, kind: 'reference' });
-      myIds.add(id);
-      prev = id;
-    });
-    if (session.practice) {
-      nodes.push({ id: session.practice.id, kind: 'study', title: session.practice.title, artId: rootId, cluster: session.artist, person: 'You', likes: 0, x: origin.x + 180, y: origin.y + 100, image: session.practice.image, sample: session.practice.sample });
-      links.push({ source: prev, target: session.practice.id, kind: 'practice' });
-      myIds.add(session.practice.id);
-      for (const artId of session.practice.references) {
-        const capture = session.captures.find(item => item.artId === artId);
-        const source = capture ? `capture-${capture.id}` : artId;
-        if (source !== prev) links.push({ source, target: session.practice.id, kind: 'practice' });
-      }
-      if (session.practice.note) {
-        nodes.push({ id: 'my-reflection', kind: 'reflection', title: 'Your small discovery', artId: rootId, cluster: session.artist, person: 'You', note: session.practice.note, likes: 0, x: origin.x + 225, y: origin.y + 180 });
-        links.push({ source: session.practice.id, target: 'my-reflection', kind: 'reflection' });
-        myIds.add('my-reflection');
-      }
+    const myIds = new Set<string>();
+    for (const thread of personalThreads(session)) {
+      let prev: string | null = null;
+      const base = communityFeatures[featureForId(thread.steps[0].artId)];
+      thread.steps.forEach((step, index) => {
+        if (step.kind === 'goal') { myIds.add(step.id); prev = step.id; return; }
+        const art = artById[step.artId];
+        const kind = step.kind === 'study' ? 'study' : step.kind === 'reflection' ? 'reflection' : 'reference';
+        nodes.push({ id: step.id, kind, title: step.title, artId: art.id, cluster: art.cluster, likes: 0, x: base.x - 150 + (index % 4) * 100, y: base.y + 175 + Math.floor(index / 4) * 105, ...(step.kind === 'study' ? { image: step.image, person: 'You', sample: session.practice?.sample } : step.kind === 'reflection' ? { person: 'You', note: step.note } : {}) });
+        if (prev) links.push({ source: prev, target: step.id, kind: kind === 'study' ? 'practice' : kind === 'reflection' ? 'reflection' : 'reference' });
+        if (step.kind === 'study' && session.practice) {
+          for (const artId of session.practice.references) {
+            if (focusForArt(artById[artId]) !== thread.id) continue;
+            const source = thread.steps.find(item => item.artId === artId && item.kind !== 'study' && item.kind !== 'reflection')?.id;
+            if (source && source !== prev) links.push({ source, target: step.id, kind: 'practice' });
+          }
+        }
+        myIds.add(step.id); prev = step.id;
+      });
     }
     return { nodes, links, myIds };
   }, [session]);
@@ -130,8 +122,8 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
       </defs>
       <rect width="1100" height={viewHeight} fill="url(#dots)" />
       <g transform={`translate(${camera.x} ${camera.y}) scale(${camera.scale})`}>
-        {Object.entries(clusters).map(([key, cluster]) => <g key={`halo-${key}`} className={`cluster-halo ${mode === 'personal' && session.started && session.artist !== key ? 'muted' : ''}`}>
-          <ellipse cx={cluster.x} cy={cluster.y} rx={key === 'kungfu' ? 250 : 180} ry={key === 'kungfu' ? 210 : 165} fill={cluster.color} opacity="0.025" />
+        {Object.entries(communityFeatures).map(([key, cluster]) => <g key={`halo-${key}`} className={`cluster-halo ${mode === 'personal' && session.started && featureForId(session.input?.artId || 'kfp-goal') !== key ? 'muted' : ''}`}>
+          <ellipse cx={cluster.x} cy={cluster.y} rx={key === 'depth' ? 260 : 185} ry={key === 'depth' ? 215 : 170} fill={cluster.color} opacity="0.025" />
         </g>)}
         {links.map((link, index) => {
           const source = nodeMap.get(link.source); const target = nodeMap.get(link.target);
@@ -148,13 +140,13 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
         })}
         {nodes.map(node => {
           const isMine = myIds.has(node.id) && session.started;
-          const root = node.kind === 'artwork' || node.id === session.input?.artId;
+          const root = node.id === communityFeatures[featureForId(node.artId)].root || node.id === session.input?.artId;
           const dimmed = (mode === 'personal' && session.started && !isMine) || (filter === 'popular' && node.likes < 16 && !root && !isMine) || (filter === 'quiet' && node.likes > 16 && !root && !isMine) || (pathNodes.length > 0 && !pathNodes.includes(node.id) && !isMine);
           const selected = node.id === selectedId;
           const hoveredNode = hovered === node.id;
           const size = root ? 92 : node.kind === 'reflection' ? 23 : node.kind === 'tutorial' ? 36 : isMine ? 65 : node.kind === 'study' ? 42 : 53;
           const art = artById[node.artId];
-          const color = isMine || activePath.has(node.id) ? '#d6ebad' : clusters[node.cluster].color;
+          const color = isMine || activePath.has(node.id) ? '#d6ebad' : communityFeatures[featureForId(node.artId)].color;
           return <g key={node.id} data-node={node.id} className={`art-node ${selected ? 'selected' : ''} ${isMine ? 'my-node' : ''} ${node.kind === 'study' && node.sample ? 'sample-study' : ''}`} transform={`translate(${node.x} ${node.y})`} opacity={dimmed ? 0.15 : 1} role="button" tabIndex={0} aria-label={`${node.kind}: ${node.title}${node.person ? ` by ${node.person}` : ''}`}
             onClick={() => onSelect(node)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(node); } }} onMouseEnter={() => setHovered(node.id)} onMouseLeave={() => setHovered(null)}>
             <title>{node.title}{node.person ? ` · ${node.person} · Demo study` : ''}</title>
@@ -171,10 +163,10 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
             {pathNodes.includes(node.id) && <g transform={`translate(${-size / 2 - 4} ${-size / 2 - 4})`}><circle r="10" fill="#d6ebad" /><text textAnchor="middle" y="4" fontSize="10" fill="#253021" fontWeight="700">{pathNodes.indexOf(node.id) + 1}</text></g>}
           </g>;
         })}
-        {Object.entries(clusters).map(([key, cluster]) => <g key={`label-${key}`} className="cluster-label" transform={`translate(${cluster.labelX} ${cluster.labelY})`} opacity={mode === 'personal' && session.started && session.artist !== key ? 0.15 : 1} onClick={() => onSelect(seedGraph.nodes.find(node => node.id === cluster.root)!)} role="button" tabIndex={0} onKeyDown={event => { if (event.key === 'Enter') onSelect(seedGraph.nodes.find(node => node.id === cluster.root)!); }} aria-label={`Explore ${cluster.name}`}>
+        {Object.entries(communityFeatures).map(([key, cluster]) => <g key={`label-${key}`} className="cluster-label" transform={`translate(${cluster.labelX} ${cluster.labelY})`} opacity={mode === 'personal' && session.started && featureForId(session.input?.artId || 'kfp-goal') !== key ? 0.15 : 1} onClick={() => onSelect(seedGraph.nodes.find(node => node.id === cluster.root)!)} role="button" tabIndex={0} onKeyDown={event => { if (event.key === 'Enter') onSelect(seedGraph.nodes.find(node => node.id === cluster.root)!); }} aria-label={`Explore theme ${cluster.title}`}>
           <circle cx="0" cy="0" r="3" fill={cluster.color} />
-          <text x="12" y="4" fill={cluster.color} fontSize="13" fontWeight="500">{cluster.name}</text>
-          <text x="12" y="24" fill="#829086" fontSize="10">{cluster.subject} · {key === 'frozen' ? `${seedGraph.nodes.filter(node => node.cluster === key).length} references` : `${seedGraph.nodes.filter(node => node.cluster === key && node.kind === 'study').length} studies`}</text>
+          <text x="12" y="4" fill={cluster.color} fontSize="17" fontWeight="500">{cluster.subtitle}</text>
+          <text x="12" y="24" fill="#829086" fontSize="10">{cluster.title} · {seedGraph.nodes.filter(node => featureForId(node.artId) === key && (node.kind === 'artwork' || node.kind === 'reference')).length} references</text>
         </g>)}
       </g>
     </svg>

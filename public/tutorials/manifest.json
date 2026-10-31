@@ -1,0 +1,709 @@
+{
+  "format": "trace-demo-lessons-v1",
+  "durationSeconds": 12,
+  "disclosure": "Instructional demo animations made for Trace. Artwork credits belong to the reference artists; no instructor endorsement is implied.",
+  "lessons": [
+    {
+      "artId": "kfp-goal",
+      "src": "/tutorials/kfp-goal-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Misty Coast",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Group the coast into three shapes",
+          "text": "Find the dark cliff, pale mist and distant horizon. Sketch those masses before adding detail."
+        },
+        {
+          "time": 4,
+          "title": "Separate near from far",
+          "text": "In grayscale, compare the darkest foreground with the softer distant forms. Keep that value gap in your study."
+        },
+        {
+          "time": 8,
+          "title": "Let edges describe the mist",
+          "text": "Restore color. Keep distant edges soft and reserve sharp accents for the foreground. Try a 60-second thumbnail."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/concept/kungfu-0000.jpg",
+        "referenceCredit": "Felicia Chen · DreamWorks Animation",
+        "referenceSourceUrl": "https://felicia-chen.com/kungfupanda4",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 80535
+      }
+    },
+    {
+      "artId": "kfp-shapes",
+      "src": "/tutorials/kfp-shapes-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Mountain Shape Studies",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Read the mountain silhouettes",
+          "text": "Trace each outer contour with your eyes. Compare wide bases, narrow peaks and the empty spaces between them."
+        },
+        {
+          "time": 4,
+          "title": "Test the value groups",
+          "text": "Ignore small textures. Can the mountain layers still read as separate flat shapes in grayscale?"
+        },
+        {
+          "time": 8,
+          "title": "Design one new silhouette",
+          "text": "Keep the same large-to-small rhythm, but invent a different peak. Compare its negative spaces with the reference."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/concept/kungfu-mtn.jpg",
+        "referenceCredit": "Felicia Chen · DreamWorks Animation",
+        "referenceSourceUrl": "https://felicia-chen.com/kungfupanda4",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 61530
+      }
+    },
+    {
+      "artId": "kfp-light",
+      "src": "/tutorials/kfp-light-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Sunlit Harbor Chase",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Find the light direction",
+          "text": "Follow the brightest planes around the harbor. Mark one light arrow before drawing individual buildings."
+        },
+        {
+          "time": 4,
+          "title": "Keep a clear focal contrast",
+          "text": "Use the grayscale view to locate the strongest light-dark boundary. Simplify weaker background contrasts."
+        },
+        {
+          "time": 8,
+          "title": "Compare warm and cool planes",
+          "text": "Return to color. Separate sunlit warm planes from cooler shadows, then paint a small three-color study."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/concept/kungfu-dockchase.jpg",
+        "referenceCredit": "Felicia Chen · DreamWorks Animation",
+        "referenceSourceUrl": "https://felicia-chen.com/kungfupanda4",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 119251
+      }
+    },
+    {
+      "artId": "kfp-atmosphere",
+      "src": "/tutorials/kfp-atmosphere-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Tavern in Warm Backlight",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Read the tavern as silhouettes",
+          "text": "Find the large dark structures against the backlight. Draw their outline first, with no interior detail."
+        },
+        {
+          "time": 4,
+          "title": "Protect the bright opening",
+          "text": "In grayscale, compare the bright opening to the darkest framing shapes. Keep that relationship simple."
+        },
+        {
+          "time": 8,
+          "title": "Control the glowing edges",
+          "text": "Return to color. Soften edges near the warm light; keep only a few dark foreground edges crisp."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/concept/kungfu-tavernaftermath.jpg",
+        "referenceCredit": "Felicia Chen · DreamWorks Animation",
+        "referenceSourceUrl": "https://felicia-chen.com/kungfupanda4",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 81737
+      }
+    },
+    {
+      "artId": "kfp-action",
+      "src": "/tutorials/kfp-action-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Tavern Action Composition",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Follow the action diagonals",
+          "text": "Look for the main slanted shapes carrying movement through the tavern. Reduce them to three directional marks."
+        },
+        {
+          "time": 4,
+          "title": "Check the focal value pattern",
+          "text": "In grayscale, find where the strongest contrast pulls your eye. Make quieter areas simpler in your thumbnail."
+        },
+        {
+          "time": 8,
+          "title": "Vary busy and quiet areas",
+          "text": "Restore color. Compare dense detail with open areas. Leave one calm region so the action remains readable."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/concept/kungfu-tavernfight.jpg",
+        "referenceCredit": "Felicia Chen · DreamWorks Animation",
+        "referenceSourceUrl": "https://felicia-chen.com/kungfupanda4",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 87297
+      }
+    },
+    {
+      "artId": "kfp-outpost",
+      "src": "/tutorials/kfp-outpost-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Cliffside Color Key",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Block the cliff and outpost",
+          "text": "Compare the building mass with the cliff underneath it. Place their largest shapes before drawing windows."
+        },
+        {
+          "time": 4,
+          "title": "Separate the distance layers",
+          "text": "Inspect the grayscale view. Compare foreground, middle ground and sky as three value families."
+        },
+        {
+          "time": 8,
+          "title": "Choose a limited color key",
+          "text": "Return to color. Pick one dominant cool family and one warm accent, then paint the scene in five shapes."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/concept/kungfu-outpost.jpg",
+        "referenceCredit": "Felicia Chen · DreamWorks Animation",
+        "referenceSourceUrl": "https://felicia-chen.com/kungfupanda4",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 100397
+      }
+    },
+    {
+      "artId": "zoo-city",
+      "src": "/tutorials/zoo-city-study.mp4",
+      "duration": 12,
+      "title": "Observation study: City in Layers",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Organize the city by scale",
+          "text": "Find foreground, middle ground and distant skyline. Compare the size changes rather than counting buildings."
+        },
+        {
+          "time": 4,
+          "title": "Build a readable value map",
+          "text": "Squint at the grayscale city. Group neighboring buildings into large light and dark masses."
+        },
+        {
+          "time": 8,
+          "title": "Use depth before detail",
+          "text": "Restore color. Compare distant saturation and edge sharpness with the foreground. Apply that change to a thumbnail."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/concept/zootopia-city.jpg",
+        "referenceCredit": "© Disney",
+        "referenceSourceUrl": "https://www.disneyanimation.com/process/visual-development/",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 138000
+      }
+    },
+    {
+      "artId": "zoo-light",
+      "src": "/tutorials/zoo-light-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Station in Warm Light",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Track the station perspective",
+          "text": "Follow the long architectural lines toward their meeting area. Establish that structure before adding signs."
+        },
+        {
+          "time": 4,
+          "title": "Locate the brightest route",
+          "text": "In grayscale, find how the light leads through the station. Preserve that path in a three-value sketch."
+        },
+        {
+          "time": 8,
+          "title": "Balance warm light and shadow",
+          "text": "Return to color. Compare sunlit surfaces with shaded planes. Save your strongest warmth for the focal area."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/concept/zootopia-station-light.jpg",
+        "referenceCredit": "© Disney · Matthias Lechner",
+        "referenceSourceUrl": "https://www.matthiaslechner.com/zootopia.html",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 110100
+      }
+    },
+    {
+      "artId": "zoo-atmosphere",
+      "src": "/tutorials/zoo-atmosphere-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Tundra Town",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Find the big winter shapes",
+          "text": "Separate the skyline, snow and street into large silhouettes. Notice how their shapes overlap."
+        },
+        {
+          "time": 4,
+          "title": "Measure atmospheric contrast",
+          "text": "In grayscale, compare the nearest darks with the softer distance. Reduce contrast as shapes recede."
+        },
+        {
+          "time": 8,
+          "title": "Keep snow color varied",
+          "text": "Return to color. Compare cool shadow snow with warmer light. Avoid using one white for every surface."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/concept/zootopia-tundra-town.jpg",
+        "referenceCredit": "© Disney",
+        "referenceSourceUrl": "https://www.disneyanimation.com/process/visual-development/",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 112413
+      }
+    },
+    {
+      "artId": "frozen-arendelle",
+      "src": "/tutorials/frozen-arendelle-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Arendelle in Winter",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Place the town inside its landscape",
+          "text": "Compare the town scale with mountains and water. Block those large relationships before roof details."
+        },
+        {
+          "time": 4,
+          "title": "Group the winter values",
+          "text": "In grayscale, separate the darkest structures from pale snow and atmosphere. Keep the distant layers simple."
+        },
+        {
+          "time": 8,
+          "title": "Study warm accents in cold light",
+          "text": "Return to color. Find small warm accents against the cool landscape. Use them sparingly in a quick study."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/concept/frozen-arendelle.jpg",
+        "referenceCredit": "© Disney · Walt Disney Animation Studios",
+        "referenceSourceUrl": "https://www.disneyanimation.com/films/frozen/",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 70996
+      }
+    },
+    {
+      "artId": "frozen-elsa",
+      "src": "/tutorials/frozen-elsa-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Elsa — Visual Development",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Read the pose and silhouette",
+          "text": "Follow the head tilt, shoulder line and outer shape. Sketch the gesture before facial features or costume detail."
+        },
+        {
+          "time": 4,
+          "title": "Check the face and hair masses",
+          "text": "In grayscale, compare the large face, hair and clothing shapes. Keep their proportions readable without small lines."
+        },
+        {
+          "time": 8,
+          "title": "Choose expression-bearing edges",
+          "text": "Restore color. Compare the angles of brows, eyes and mouth. Change one angle in your own study and compare the mood."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/concept/frozen-elsa.jpg",
+        "referenceCredit": "© Disney · Walt Disney Animation Studios",
+        "referenceSourceUrl": "https://www.disneyanimation.com/films/frozen/",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 48447
+      }
+    },
+    {
+      "artId": "frozen-anna",
+      "src": "/tutorials/frozen-anna-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Anna — Visual Development",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Start with the head gesture",
+          "text": "Notice the head tilt and the relationship of shoulders to face. Draw a simple action line before adding features."
+        },
+        {
+          "time": 4,
+          "title": "Compare large facial proportions",
+          "text": "In grayscale, compare the face outline, hair mass and spacing of features. Use light construction shapes first."
+        },
+        {
+          "time": 8,
+          "title": "Test one expression change",
+          "text": "Return to color. Compare brow and mouth angles. Try a small variation, then ask which marks changed the expression most."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/concept/frozen-anna.jpg",
+        "referenceCredit": "© Disney · Walt Disney Animation Studios",
+        "referenceSourceUrl": "https://www.disneyanimation.com/films/frozen/",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 48241
+      }
+    },
+    {
+      "artId": "starry",
+      "src": "/tutorials/starry-study.mp4",
+      "duration": 12,
+      "title": "Observation study: The Starry Night",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Follow the sky movement",
+          "text": "Trace the broad arcs through the sky. Plan their direction before painting individual dabs or stars."
+        },
+        {
+          "time": 4,
+          "title": "Separate light from dark masses",
+          "text": "In grayscale, compare bright sky paths with the dark cypress and village. Preserve these large value groups."
+        },
+        {
+          "time": 8,
+          "title": "Make dabs follow the form",
+          "text": "Restore color. Use short directional strokes in blue and yellow families. Compare where the direction changes."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/vangogh-starry.jpg",
+        "referenceCredit": "Vincent van Gogh · Public domain",
+        "referenceSourceUrl": "https://commons.wikimedia.org/wiki/File:Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 98069
+      }
+    },
+    {
+      "artId": "cypresses",
+      "src": "/tutorials/cypresses-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Wheat Field with Cypresses",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Compare field, tree and sky rhythms",
+          "text": "Follow the horizontal field, rising cypress and curling clouds. Give each area a distinct stroke direction."
+        },
+        {
+          "time": 4,
+          "title": "Check the tree silhouette",
+          "text": "In grayscale, compare the dark tree against its surroundings. Keep that silhouette clear before adding texture."
+        },
+        {
+          "time": 8,
+          "title": "Vary the short color dabs",
+          "text": "Return to color. Compare yellow-green field marks with cooler sky marks. Use varied dabs instead of a single flat fill."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/vangogh-cypresses.jpg",
+        "referenceCredit": "Vincent van Gogh · Public domain",
+        "referenceSourceUrl": "https://commons.wikimedia.org/wiki/File:Vincent_van_Gogh_-_Wheat_Field_with_Cypresses_-_Google_Art_Project.jpg",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 99990
+      }
+    },
+    {
+      "artId": "cafe",
+      "src": "/tutorials/cafe-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Café Terrace at Night",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Find the cafe perspective",
+          "text": "Follow the terrace edges into the street. Sketch the large perspective wedge before tables or cobblestones."
+        },
+        {
+          "time": 4,
+          "title": "Protect the bright cafe shape",
+          "text": "In grayscale, compare the lit canopy with the dark street. Keep the main value contrast stronger than small details."
+        },
+        {
+          "time": 8,
+          "title": "Compare yellow with blue",
+          "text": "Restore color. Observe warm cafe light against cool night colors. Try the same contrast with a limited palette."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/vangogh-cafe.jpg",
+        "referenceCredit": "Vincent van Gogh · Public domain",
+        "referenceSourceUrl": "https://commons.wikimedia.org/wiki/File:Van_Gogh_-_Terrasse_des_Caf%C3%A9s_an_der_Place_du_Forum_in_Arles_am_Abend1.jpeg",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 75606
+      }
+    },
+    {
+      "artId": "lilies",
+      "src": "/tutorials/lilies-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Water Lilies",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Group the floating color patches",
+          "text": "Separate large water reflections from smaller lily shapes. Place their spacing before painting individual petals."
+        },
+        {
+          "time": 4,
+          "title": "Look for quiet value changes",
+          "text": "In grayscale, compare the subtle dark and light patches. Avoid outlining every lily with the same hard edge."
+        },
+        {
+          "time": 8,
+          "title": "Let adjacent colors build the water",
+          "text": "Return to color. Compare blue, green and violet patches. Paint beside earlier marks and keep some edges soft."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/monet-lilies.jpg",
+        "referenceCredit": "Claude Monet · Public domain",
+        "referenceSourceUrl": "https://commons.wikimedia.org/wiki/File:Claude_Monet_-_Water_Lilies_-_Google_Art_Project.jpg",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 74848
+      }
+    },
+    {
+      "artId": "sunrise",
+      "src": "/tutorials/sunrise-study.mp4",
+      "duration": 12,
+      "title": "Observation study: Impression, Sunrise",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Simplify boats and horizon",
+          "text": "Place the horizon and boat silhouettes as a few broad shapes. Keep the distant industrial detail secondary."
+        },
+        {
+          "time": 4,
+          "title": "Compare the sun in grayscale",
+          "text": "Notice how the sun value compares with the haze. Ask how much its color, rather than outline, attracts your eye."
+        },
+        {
+          "time": 8,
+          "title": "Use one small warm accent",
+          "text": "Restore color. Compare orange against muted blue-gray water. Keep broken reflection marks small and horizontal."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/monet-sunrise.jpg",
+        "referenceCredit": "Claude Monet · Public domain",
+        "referenceSourceUrl": "https://commons.wikimedia.org/wiki/File:Claude_Monet,_Impression,_soleil_levant.jpg",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 69936
+      }
+    },
+    {
+      "artId": "garden",
+      "src": "/tutorials/garden-study.mp4",
+      "duration": 12,
+      "title": "Observation study: The Artist’s Garden at Giverny",
+      "steps": [
+        {
+          "time": 0,
+          "title": "Find the garden depth rhythm",
+          "text": "Follow the planted rows into the distance. Compare the broad foreground color patches with smaller distant marks."
+        },
+        {
+          "time": 4,
+          "title": "Group the shaded passages",
+          "text": "In grayscale, locate the darker trees and path. Let these large groups organize the busy flower texture."
+        },
+        {
+          "time": 8,
+          "title": "Suggest flowers with color patches",
+          "text": "Return to color. Place neighboring greens, violets and warm accents. Soften distant edges instead of drawing every flower."
+        }
+      ],
+      "provenance": {
+        "kind": "authored-demo-animation",
+        "description": "Silent Trace demo micro-lesson: original reference shown in full with authored observation exercises and a temporary grayscale inspection. Not an original-artist tutorial or a real instructor recording.",
+        "referenceImage": "/art/monet-garden.jpg",
+        "referenceCredit": "Claude Monet · Public domain",
+        "referenceSourceUrl": "https://commons.wikimedia.org/wiki/File:Claude_Monet_The_Artist%27s_Garden_at_Giverny.jpg",
+        "script": "scripts/build-demo-lessons.py"
+      },
+      "video": {
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 12,
+        "audio": false,
+        "bytes": 86542
+      }
+    }
+  ]
+}

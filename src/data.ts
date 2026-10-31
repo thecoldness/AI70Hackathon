@@ -129,7 +129,10 @@ export const artworks: Artwork[] = [
       "atmosphere",
       "light",
       "silhouette",
-      "depth"
+      "depth",
+      "character",
+      "gesture",
+      "expression"
     ],
     "collection": "Kung Fu Panda 4",
     "credit": "Felicia Chen · DreamWorks Animation",
@@ -146,7 +149,10 @@ export const artworks: Artwork[] = [
       "composition",
       "action",
       "color",
-      "contrast"
+      "contrast",
+      "character",
+      "gesture",
+      "expression"
     ],
     "collection": "Kung Fu Panda 4",
     "credit": "Felicia Chen · DreamWorks Animation",
@@ -163,7 +169,10 @@ export const artworks: Artwork[] = [
       "landscape",
       "light",
       "shape",
-      "depth"
+      "depth",
+      "character",
+      "gesture",
+      "expression"
     ],
     "collection": "Kung Fu Panda 4",
     "credit": "Felicia Chen · DreamWorks Animation",
@@ -286,7 +295,10 @@ export const artworks: Artwork[] = [
       "movement",
       "night",
       "brushwork",
-      "color"
+      "color",
+      "pigment",
+      "dabs",
+      "directional-marks"
     ],
     "collection": "Van Gogh",
     "credit": "Vincent van Gogh · Public domain",
@@ -302,7 +314,10 @@ export const artworks: Artwork[] = [
     "tags": [
       "movement",
       "brushwork",
-      "landscape"
+      "landscape",
+      "pigment",
+      "dabs",
+      "directional-marks"
     ],
     "collection": "Van Gogh",
     "credit": "Vincent van Gogh · Public domain",
@@ -319,7 +334,10 @@ export const artworks: Artwork[] = [
       "night",
       "color",
       "light",
-      "contrast"
+      "contrast",
+      "pigment",
+      "dabs",
+      "directional-marks"
     ],
     "collection": "Van Gogh",
     "credit": "Vincent van Gogh · Public domain",
@@ -336,7 +354,10 @@ export const artworks: Artwork[] = [
       "light",
       "water",
       "color",
-      "reflection"
+      "reflection",
+      "pigment",
+      "soft-edge",
+      "color-relationship"
     ],
     "collection": "Monet",
     "credit": "Claude Monet · Public domain",
@@ -353,7 +374,10 @@ export const artworks: Artwork[] = [
       "light",
       "water",
       "atmosphere",
-      "color"
+      "color",
+      "pigment",
+      "soft-edge",
+      "color-relationship"
     ],
     "collection": "Monet",
     "credit": "Claude Monet · Public domain",
@@ -369,7 +393,10 @@ export const artworks: Artwork[] = [
     "tags": [
       "light",
       "color",
-      "flowers"
+      "flowers",
+      "pigment",
+      "soft-edge",
+      "color-relationship"
     ],
     "collection": "Monet",
     "credit": "Claude Monet · Public domain",
