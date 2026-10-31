@@ -21,3 +21,4 @@ body{background:#e9e9e3}.tablet-stage{min-height:100dvh;height:100dvh;display:fl
 @media(prefers-reduced-motion:reduce){.ipad-content,.capture-orb-wrap.is-kept .capture-orb{animation:none}}
 
 .native-reference .masonry.compact-feed{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:15px;columns:auto}.native-reference .masonry.compact-feed .pin-card{margin:0}@media(max-width:720px){.native-reference .masonry.compact-feed{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
+.instagram-browser>.native-social-header{position:sticky;top:0;z-index:5}
