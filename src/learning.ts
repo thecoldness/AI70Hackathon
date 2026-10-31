@@ -1,8 +1,8 @@
-import { artById, notesForArt } from './data';
+import { artById, artworks, notesForArt, tutorialArtIds } from './data';
 import type { Artwork, Session } from './data';
 
 export type LearningFocus = 'world-design' | 'painted-color';
-export type FeatureGroup = 'character' | 'depth' | 'marks' | 'light';
+export type FeatureGroup = 'character' | 'depth' | 'marks' | 'light' | 'line' | 'ornament';
 
 export const learningFocuses = {
   'world-design': { title: 'Character & world design', subtitle: 'Silhouette, shape & spatial depth', color: '#dbd8ac', question: 'How do shape, expression, and spatial layers build a believable world?', cues: ['silhouette', 'shape', 'depth', 'composition'] },
@@ -10,10 +10,12 @@ export const learningFocuses = {
 };
 
 export const communityFeatures = {
-  character: { title: 'Stylized character design', subtitle: 'Character design', subject: 'Shape, gesture & expression', root: 'kfp-outpost', color: '#e5ca9c', x: 380, y: 255, labelX: 240, labelY: 25 },
-  depth: { title: 'Cinematic depth & composition', subtitle: 'Depth & composition', subject: 'Silhouette, scale & atmosphere', root: 'kfp-goal', color: '#a9ceca', x: 830, y: 405, labelX: 680, labelY: 160 },
-  marks: { title: 'Color dabs & visual rhythm', subtitle: 'Color & brushwork', subject: 'Color contrast & directional marks', root: 'starry', color: '#d6e8ad', x: 210, y: 610, labelX: 65, labelY: 400 },
-  light: { title: 'Soft light & color relationships', subtitle: 'Light & color', subject: 'Soft edges, reflections & warm / cool', root: 'lilies', color: '#afa6de', x: 650, y: 735, labelX: 490, labelY: 535 },
+  character: { title: 'Stylized character design', subtitle: 'Character design', subject: 'Shape, gesture & expression', root: 'kfp-outpost', color: '#e5ca9c', x: 260, y: 260, labelX: 60, labelY: -5 },
+  depth: { title: 'Cinematic depth & composition', subtitle: 'Depth & composition', subject: 'Silhouette, scale & atmosphere', root: 'kfp-goal', color: '#a9ceca', x: 810, y: 260, labelX: 625, labelY: -5 },
+  line: { title: 'Expressive line & gesture', subtitle: 'Line & gesture', subject: 'Contour, movement & weight', root: artworks.find(art => art.cluster === 'schiele')!.id, color: '#d3b8a6', x: 1300, y: 260, labelX: 1125, labelY: -5 },
+  marks: { title: 'Color dabs & visual rhythm', subtitle: 'Color & brushwork', subject: 'Color contrast & directional marks', root: 'starry', color: '#d6e8ad', x: 260, y: 820, labelX: 60, labelY: 595 },
+  light: { title: 'Soft light & color relationships', subtitle: 'Light & color', subject: 'Soft edges, reflections & warm / cool', root: 'lilies', color: '#afa6de', x: 810, y: 820, labelX: 625, labelY: 595 },
+  ornament: { title: 'Pattern & decorative rhythm', subtitle: 'Pattern & ornament', subject: 'Repetition, framing & flowing shapes', root: artworks.find(art => art.cluster === 'mucha')!.id, color: '#ccbf81', x: 1300, y: 820, labelX: 1125, labelY: 595 },
 };
 
 // Explicit feature-tag inference for this interactive demo; no live model call.
@@ -21,6 +23,8 @@ export function focusForArt(art: Artwork): LearningFocus {
   return art.tags.some(tag => ['pigment', 'brushwork', 'painted-marks', 'soft-edge'].includes(tag)) ? 'painted-color' : 'world-design';
 }
 export function featureForArt(art: Artwork): FeatureGroup {
+  if (art.tags.includes('ornament')) return 'ornament';
+  if (art.tags.includes('expressive-line')) return 'line';
   if (focusForArt(art) === 'painted-color') return art.tags.some(tag => ['dabs', 'brushwork', 'directional-marks'].includes(tag)) ? 'marks' : 'light';
   return art.tags.some(tag => ['character', 'gesture', 'expression'].includes(tag)) ? 'character' : 'depth';
 }
@@ -93,6 +97,6 @@ export function resourcesForArt(artId: string): CommunityResource[] {
   return [
     ...studiesForArt(artId),
     ...notesForArt(artId).map(note => ({ id: note.id, kind: 'reflection' as const, title: note.title, person: note.name, provenance: 'Illustrative peer insight · demo', text: note.text, likes: note.likes })),
-    { id: `${artId}-tutorial`, kind: 'tutorial', title: 'Observe, try, compare', person: 'Trace visual lesson', image: artById[artId].image, provenance: '12-second silent tutorial · demo', text: 'A short, playable visual exercise around this exact reference: notice the large relationships, try a simplified study, and compare your choices.', likes: 18, src: `/tutorials/${artId}-study.mp4` },
+    ...(tutorialArtIds.has(artId) ? [{ id: `${artId}-tutorial`, kind: 'tutorial' as const, title: 'Observe, try, compare', person: 'Trace visual lesson', image: artById[artId].image, provenance: '12-second silent tutorial · demo', text: 'A short, playable visual exercise around this exact reference: notice the large relationships, try a simplified study, and compare your choices.', likes: 18, src: `/tutorials/${artId}-study.mp4` }] : []),
   ];
 }
