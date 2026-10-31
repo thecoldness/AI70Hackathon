@@ -131,7 +131,7 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
       <rect width="1100" height={viewHeight} fill="url(#dots)" />
       <g transform={`translate(${camera.x} ${camera.y}) scale(${camera.scale})`}>
         {Object.entries(clusters).map(([key, cluster]) => <g key={`halo-${key}`} className={`cluster-halo ${mode === 'personal' && session.started && session.artist !== key ? 'muted' : ''}`}>
-          <ellipse cx={cluster.x} cy={cluster.y} rx={key === 'vangogh' ? 250 : 180} ry={key === 'vangogh' ? 210 : 165} fill={cluster.color} opacity="0.025" />
+          <ellipse cx={cluster.x} cy={cluster.y} rx={key === 'kungfu' ? 250 : 180} ry={key === 'kungfu' ? 210 : 165} fill={cluster.color} opacity="0.025" />
         </g>)}
         {links.map((link, index) => {
           const source = nodeMap.get(link.source); const target = nodeMap.get(link.target);
@@ -166,7 +166,7 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
               {node.kind === 'tutorial' && <Video x={-8} y={-8} width={16} height={16} color="white" />}
             </>}
             {root && <><circle cx={size / 2 - 3} cy={size / 2 - 2} r="10" fill={color} /><Sparkles x={size / 2 - 9} y={size / 2 - 8} width="12" height="12" color="#263127" /></>}
-            {isMine && node.kind !== 'artwork' && <text y={size / 2 + 21} textAnchor="middle" fill="#dbe4d1" fontSize="11">{node.kind === 'reflection' ? 'Your reflection' : node.person === 'You' ? 'Your study' : session.captures.find(item => `capture-${item.id}` === node.id)?.platform}</text>}
+            {isMine && (node.kind !== 'artwork' || node.id === session.input?.artId) && <text y={size / 2 + 21} textAnchor="middle" fill="#dbe4d1" fontSize="11">{node.id === session.input?.artId ? 'Learning goal · Instagram' : node.kind === 'reflection' ? 'Your reflection' : node.person === 'You' ? 'Your study' : session.captures.find(item => `capture-${item.id}` === node.id)?.platform}</text>}
             {(hoveredNode || selected) && !isMine && <g className="node-tooltip" transform={`translate(0 ${-size / 2 - 31})`}><rect x={-Math.min(node.title.length * 3.3 + 12, 125)} width={Math.min(node.title.length * 6.6 + 24, 250)} height="24" rx="5" fill="#e5e9df" /><text y="16" textAnchor="middle" fontSize="11" fill="#1c251e">{node.title.length > 35 ? `${node.title.slice(0, 33)}…` : node.title}</text></g>}
             {pathNodes.includes(node.id) && <g transform={`translate(${-size / 2 - 4} ${-size / 2 - 4})`}><circle r="10" fill="#d6ebad" /><text textAnchor="middle" y="4" fontSize="10" fill="#253021" fontWeight="700">{pathNodes.indexOf(node.id) + 1}</text></g>}
           </g>;
@@ -178,7 +178,7 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
         </g>)}
       </g>
     </svg>
-    <div className="canvas-top-note"><span className="live-spark" />{pathNodes.length ? 'One person’s path. A new way to see.' : session.started && mode === 'personal' ? `${session.captures.length} references · ${session.practice ? '1 study' : 'a study waiting to happen'}` : 'A shared atlas of small discoveries'}</div>
+    <div className="canvas-top-note"><span className="live-spark" />{pathNodes.length ? 'One person’s path. A new way to see.' : session.started && mode === 'personal' ? `1 learning goal · ${session.captures.length} references · ${session.practice ? '1 study' : 'a study waiting to happen'}` : 'A shared atlas of small discoveries'}</div>
     <div className="canvas-legend"><span><i className="dot lime" />Reference</span><span><i className="dot lilac" />Practice</span><span><i className="dot sand" />Reflection</span></div>
     <div className="canvas-tools"><button aria-label="Zoom out" onClick={() => zoom(-0.2)}><Minus size={16} /></button><span>{Math.round(camera.scale * 100)}%</span><button aria-label="Zoom in" onClick={() => zoom(0.2)}><Plus size={16} /></button><div className="tool-separator" /><button aria-label="Fit graph to view" onClick={fitGraph}><Expand size={16} /></button></div>
     {!session.started && <div className="canvas-caption"><Route size={15} /><span>Every connection is a step someone took.</span></div>}
