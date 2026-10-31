@@ -52,6 +52,7 @@ export interface Practice {
 }
 
 export interface Session {
+  input?: Capture | null;
   started: boolean;
   paused: boolean;
   artist: Cluster;
@@ -162,5 +163,5 @@ export function notesForArt(artId: string) {
 }
 
 export function initialSession(): Session {
-  return { started: false, paused: false, artist: 'vangogh', goal: 'How can brushwork make a painting feel alive?', captures: [], practice: null };
+  return { started: false, paused: false, input: null, artist: 'vangogh', goal: 'How can brushwork make a painting feel alive?', captures: [], practice: null };
 }
