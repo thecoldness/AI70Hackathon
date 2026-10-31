@@ -16,7 +16,7 @@ npm run dev
 1. 先在 iPad 主屏幕打开 **Instagram**，选择一个画家账号，只浏览这位画家的作品。打开一幅想学习的画，例如 Felicia Chen 为 **Kung Fu Panda 4** 绘制的 **Misty Coast**，停留在作品详情。此时没有悬浮按钮，也不会生成学习记录。
 2. 点击底部 Home 手势条，打开 **Trace**，点击 **Start learning session**；回主屏幕再打开 **Instagram**。它会恢复同一画家、同一作品及浏览位置。点击悬浮目标按钮 **Set as learning goal**，把当前作品设为学习目标，即个人路径的第一个节点。启动 Trace 本身不会自动设定目标。
 3. 关闭作品详情，打开同一画家的 **Mountain Shape Studies** 或 **Sunlit Harbor Chase**，点击心形收藏。
-4. 回到主屏幕，打开 **Pinterest**，此时图集混合展示 **Kung Fu Panda、Zootopia、Van Gogh、Monet**。演示时选择 **City in Layers** 或 **Tundra Town** 等 Zootopia 概念图，以及其他 Kung Fu Panda 作品并点击心形。图片、平台来源、选择顺序和时间都会保留。
+4. 回到主屏幕，打开 **Pinterest**，此时图集混合展示 **Kung Fu Panda、Zootopia、Frozen、Van Gogh、Monet**。演示时选择 **City in Layers** 或 **Tundra Town** 等 Zootopia 概念图，以及其他 Kung Fu Panda 作品并点击心形。图片、平台来源、选择顺序和时间都会保留。
 5. 回到主屏幕，打开 **Procreate**。在画布上绘画、导入自己的 PNG/JPEG/WebP，或点击 **Reveal demo study** 使用清楚标注的演示素材。
 6. 点击 Home 手势条、**Gallery** 或 **Finish & leave Procreate**。退出后，Trace 弹出 **Keep this study in your journal?**，选择真正有帮助的参考，写下自己的观察，点击 **Yes, add to my journal**。选择 **Not now** 则不保存练习。
 7. 保存后仍在主屏幕。再次点开 **Trace**，查看社区图谱或 **My path**，其中包含 input、跨 App 参考记录、自己的练习及反思。
@@ -48,7 +48,7 @@ Instagram 与 Pinterest 各自保留作品详情、搜索、筛选及滚动位�
 - 只有用户在 Trace 主动开始后才出现悬浮按钮：先用目标图标设定学习目标，再用心形记录参考。用户返回原来浏览的 Instagram 作品后，主动点击 **Set as learning goal** 才会创建第一个节点；后续选择成为参考。启动前的浏览不进入日志，启动后也不记录未点击的作品。暂停后不接受记录；退出绘画 App 时，保存练习需要确认。数据保存在当前浏览器的 localStorage；私有笔记不会发送到服务器。
 - 当前 demo 保留一轮练习，可以替换该练习；完整的多轮历史、真实账户及多人同步不在本版范围内。
 - 图片导入限制为 3 MB。存储空间不足时会提示导出记录，当前页面仍可使用。重置会清空这个 demo 在当前浏览器内的学习记录与互动。
-- Kung Fu Panda 4 概念图来自 Felicia Chen 本人作品集；Zootopia 概念图来自 Disney Animation 官方视觉开发页和 Matthias Lechner 本人作品集。梵高和莫奈参考来自 Wikimedia Commons。完整来源与各自版权信息保存在 [public/art/credits.json](public/art/credits.json)，概念图没有标为公有领域。图像展示名称是描述性标签，Instagram 账号是演示账号。
+- Kung Fu Panda 4 概念图来自 Felicia Chen 本人作品集；Zootopia 概念图来自 Disney Animation 官方视觉开发页和 Matthias Lechner 本人作品集；新增的 Frozen 环境与角色概念图来自 Disney Animation 官方影片页，可在 Pinterest 混合图集中浏览或用 Frozen 分类筛选，并主动收藏到路径中。梵高和莫奈参考来自 Wikimedia Commons。完整来源与各自版权信息保存在 [public/art/credits.json](public/art/credits.json)，概念图没有标为公有领域。图像展示名称是描述性标签，Instagram 账号是演示账号。
 
 ## 代码位置
 

@@ -1,5 +1,5 @@
 {
-  "note": "Reference artworks used in an interactive hackathon concept demo. Traditional paintings are public domain as individually noted. Kung Fu Panda and Zootopia concept-art references are copyrighted works, credited to their original artists and studios. Descriptive demo titles are not official artwork titles. Illustrative study variations are not evidence of human student outcomes.",
+  "note": "Reference artworks used in an interactive hackathon concept demo. Traditional paintings are public domain as individually noted. Kung Fu Panda, Zootopia, and Frozen concept-art references are copyrighted works, credited to their original artists and studios. Descriptive demo titles are not official artwork titles. Illustrative study variations are not evidence of human student outcomes.",
   "artworks": [
     {
       "file": "vangogh-starry.jpg",
@@ -306,6 +306,57 @@
       "license": "Copyright retained; not public domain.",
       "width": 1000,
       "height": 455
+    },
+    {
+      "id": "frozen-arendelle",
+      "file": "concept/frozen-arendelle.jpg",
+      "publicPath": "/art/concept/frozen-arendelle.jpg",
+      "title": "Arendelle in Winter",
+      "titleIsDescriptive": true,
+      "artist": "Walt Disney Animation Studios",
+      "film": "Frozen",
+      "year": "2013",
+      "source": "Disney Animation — official Frozen film page",
+      "sourceUrl": "https://www.disneyanimation.com/films/frozen/",
+      "imageUrl": "https://cdn.disneyanimation.com/uploads/films/frozen/5.jpg",
+      "copyright": "© Disney. All rights reserved.",
+      "license": "Copyright retained; not public domain.",
+      "width": 1500,
+      "height": 623
+    },
+    {
+      "id": "frozen-elsa",
+      "file": "concept/frozen-elsa.jpg",
+      "publicPath": "/art/concept/frozen-elsa.jpg",
+      "title": "Elsa — Visual Development",
+      "titleIsDescriptive": true,
+      "artist": "Walt Disney Animation Studios",
+      "film": "Frozen",
+      "year": "2013",
+      "source": "Disney Animation — official Frozen film page",
+      "sourceUrl": "https://www.disneyanimation.com/films/frozen/",
+      "imageUrl": "https://cdn.disneyanimation.com/uploads/films/frozen/135----jkim---elsasketch3.jpg",
+      "copyright": "© Disney. All rights reserved.",
+      "license": "Copyright retained; not public domain.",
+      "width": 1500,
+      "height": 1059
+    },
+    {
+      "id": "frozen-anna",
+      "file": "concept/frozen-anna.jpg",
+      "publicPath": "/art/concept/frozen-anna.jpg",
+      "title": "Anna — Visual Development",
+      "titleIsDescriptive": true,
+      "artist": "Walt Disney Animation Studios",
+      "film": "Frozen",
+      "year": "2013",
+      "source": "Disney Animation — official Frozen film page",
+      "sourceUrl": "https://www.disneyanimation.com/films/frozen/",
+      "imageUrl": "https://cdn.disneyanimation.com/uploads/films/frozen/jkim---anna-29.jpg",
+      "copyright": "© Disney. All rights reserved.",
+      "license": "Copyright retained; not public domain.",
+      "width": 1500,
+      "height": 1059
     }
   ]
 }

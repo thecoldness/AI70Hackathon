@@ -1,5 +1,5 @@
 export type Platform = 'Pinterest' | 'Instagram';
-export type Cluster = 'kungfu' | 'zootopia' | 'vangogh' | 'monet';
+export type Cluster = 'kungfu' | 'zootopia' | 'frozen' | 'vangogh' | 'monet';
 export type NodeKind = 'artwork' | 'reference' | 'study' | 'reflection' | 'tutorial';
 
 export interface Artwork {
@@ -224,6 +224,58 @@ export const artworks: Artwork[] = [
     "sourceUrl": "https://www.disneyanimation.com/process/visual-development/"
   },
   {
+    "id": "frozen-arendelle",
+    "title": "Arendelle in Winter",
+    "artist": "Walt Disney Animation Studios",
+    "image": "/art/concept/frozen-arendelle.jpg",
+    "cluster": "frozen",
+    "year": "2013",
+    "tags": [
+      "snow",
+      "light",
+      "atmosphere",
+      "landscape",
+      "composition"
+    ],
+    "collection": "Frozen",
+    "credit": "© Disney · Walt Disney Animation Studios",
+    "sourceUrl": "https://www.disneyanimation.com/films/frozen/"
+  },
+  {
+    "id": "frozen-elsa",
+    "title": "Elsa — Visual Development",
+    "artist": "Walt Disney Animation Studios",
+    "image": "/art/concept/frozen-elsa.jpg",
+    "cluster": "frozen",
+    "year": "2013",
+    "tags": [
+      "character",
+      "drawing",
+      "shape",
+      "expression"
+    ],
+    "collection": "Frozen",
+    "credit": "© Disney · Walt Disney Animation Studios",
+    "sourceUrl": "https://www.disneyanimation.com/films/frozen/"
+  },
+  {
+    "id": "frozen-anna",
+    "title": "Anna — Visual Development",
+    "artist": "Walt Disney Animation Studios",
+    "image": "/art/concept/frozen-anna.jpg",
+    "cluster": "frozen",
+    "year": "2013",
+    "tags": [
+      "character",
+      "drawing",
+      "shape",
+      "expression"
+    ],
+    "collection": "Frozen",
+    "credit": "© Disney · Walt Disney Animation Studios",
+    "sourceUrl": "https://www.disneyanimation.com/films/frozen/"
+  },
+  {
     "id": "starry",
     "title": "The Starry Night",
     "artist": "Vincent van Gogh",
@@ -327,7 +379,7 @@ export const artworks: Artwork[] = [
 
 export const artById = Object.fromEntries(artworks.map(art => [art.id, art])) as Record<string, Artwork>;
 
-export const clusters: Record<Cluster, { name: string; profileTitle: string; account: string; description: string; subject: string; color: string; root: string; x: number; y: number; labelX: number; labelY: number }> = {
+export const clusters: Record<Cluster, { name: string; showOnInstagram?: boolean; profileTitle: string; account: string; description: string; subject: string; color: string; root: string; x: number; y: number; labelX: number; labelY: number }> = {
   "kungfu": {
     "name": "Kung Fu Panda",
     "profileTitle": "Felicia Chen",
@@ -353,6 +405,20 @@ export const clusters: Record<Cluster, { name: string; profileTitle: string; acc
     "y": 485,
     "labelX": 735,
     "labelY": 280
+  },
+  "frozen": {
+    "name": "Frozen",
+    "showOnInstagram": false,
+    "profileTitle": "Frozen · Concept art",
+    "account": "frozen.visdev",
+    "description": "Frozen · Environment and character visual development",
+    "subject": "Winter, shape & expression",
+    "color": "#b4d9ef",
+    "root": "frozen-arendelle",
+    "x": 1040,
+    "y": 175,
+    "labelX": 935,
+    "labelY": -30
   },
   "vangogh": {
     "name": "Vincent van Gogh",
@@ -390,7 +456,11 @@ export const sampleNotes = [
 
 export function notesForArt(artId: string) {
   const cluster = artById[artId]?.cluster;
-  const content = cluster === 'zootopia' ? [
+  const content = cluster === 'frozen' ? [
+    ['Let the light separate the layers.', 'I compared the bright distant castle with the darker cliffs. Grouping those values helped me see how a cold scene can still have a clear focal point.'],
+    ['Character shapes carry an expression.', 'I looked at the tilt of the head and the larger curves before trying the small features. That helped me understand the expression.'],
+    ['Keep a few edges quiet.', 'I tried leaving the distant shapes less defined. Comparing the studies helped me see where detail actually mattered.'],
+  ] : cluster === 'zootopia' ? [
     ['Follow the path through the city.', 'I blocked the road and the largest buildings first. That helped me see the route my eye took before I added windows or characters.'],
     ['Warm and cool colors organize the space.', 'My first study used too many colors at the same strength. Separating warm light from cool shadows made the depth much clearer.'],
     ['Scale is a choice, not just a measurement.', 'Comparing the animals with the surrounding shapes helped me understand how the environment can make a character feel small, safe, or overwhelmed.'],
@@ -414,7 +484,7 @@ export function makeSeedGraph(): { nodes: AtlasNode[]; links: AtlasLink[] } {
   for (const [key, cluster] of Object.entries(clusters) as [Cluster, typeof clusters[Cluster]][]) {
     const refs = artworks.filter(art => art.cluster === key);
     for (const ref of refs) if (ref.id !== cluster.root) links.push({ source: cluster.root, target: ref.id, kind: 'reference' });
-    const count = key === 'kungfu' ? 12 : key === 'zootopia' ? 8 : 6;
+    const count = key === 'frozen' ? 0 : key === 'kungfu' ? 12 : key === 'zootopia' ? 8 : 6;
     const lead = key === 'zootopia' || key === 'monet' ? 'Jules A.' : 'Mina L.';
     for (let i = 0; i < count; i++) {
       const ref = refs[i % refs.length];

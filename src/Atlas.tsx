@@ -174,7 +174,7 @@ export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, 
         {Object.entries(clusters).map(([key, cluster]) => <g key={`label-${key}`} className="cluster-label" transform={`translate(${cluster.labelX} ${cluster.labelY})`} opacity={mode === 'personal' && session.started && session.artist !== key ? 0.15 : 1} onClick={() => onSelect(seedGraph.nodes.find(node => node.id === cluster.root)!)} role="button" tabIndex={0} onKeyDown={event => { if (event.key === 'Enter') onSelect(seedGraph.nodes.find(node => node.id === cluster.root)!); }} aria-label={`Explore ${cluster.name}`}>
           <circle cx="0" cy="0" r="3" fill={cluster.color} />
           <text x="12" y="4" fill={cluster.color} fontSize="13" fontWeight="500">{cluster.name}</text>
-          <text x="12" y="24" fill="#829086" fontSize="10">{cluster.subject} · {seedGraph.nodes.filter(node => node.cluster === key && node.kind === 'study').length} studies</text>
+          <text x="12" y="24" fill="#829086" fontSize="10">{cluster.subject} · {key === 'frozen' ? `${seedGraph.nodes.filter(node => node.cluster === key).length} references` : `${seedGraph.nodes.filter(node => node.cluster === key && node.kind === 'study').length} studies`}</text>
         </g>)}
       </g>
     </svg>
