@@ -1,9 +1,8 @@
-import suppliedArtworks from './supplied-artworks.json';
-import { owlInsights, owlLearningPaths, owlReferenceId, owlStudies } from './peerStudies';
+import { libraryArtworks, libraryCollections, libraryFeature, libraryFeatureRoots } from './library';
+import type { LibraryCluster } from './library';
 
 export type Platform = 'Pinterest' | 'Instagram';
-export type SuppliedCluster = 'mucha' | 'schiele' | 'gesture' | 'klimt' | 'klaus' | 'kungfu-library' | 'shape-language' | 'silhouette' | 'spiderverse' | 'wolfwalkers';
-export type Cluster = 'kungfu' | 'zootopia' | 'frozen' | 'vangogh' | 'monet' | SuppliedCluster;
+export type Cluster = 'kungfu' | 'zootopia' | 'frozen' | 'vangogh' | 'monet' | LibraryCluster;
 export type NodeKind = 'artwork' | 'reference' | 'study' | 'reflection' | 'tutorial';
 
 export interface Artwork {
@@ -17,6 +16,10 @@ export interface Artwork {
   collection: string;
   credit: string;
   sourceUrl: string;
+  /** width / height, when known — used for the masonry feed. */
+  ratio?: number;
+  /** Small image for dense views such as the atlas. */
+  thumb?: string;
 }
 
 export interface AtlasNode {
@@ -26,8 +29,6 @@ export interface AtlasNode {
   title: string;
   artId: string;
   person?: string;
-  parentArtId?: string;
-  provenance?: string;
   note?: string;
   likes: number;
   x?: number;
@@ -41,7 +42,7 @@ export interface AtlasNode {
 export interface AtlasLink {
   source: string;
   target: string;
-  kind: 'reference' | 'practice' | 'reflection' | 'journey';
+  kind: 'reference' | 'practice' | 'reflection';
 }
 
 export interface Capture {
@@ -60,6 +61,24 @@ export interface Practice {
   sample: boolean;
 }
 
+/** A private learning-log entry, written from one saved study and the path behind it. */
+export interface JournalEntry {
+  id: string;
+  createdAt: string;
+  title: string;
+  image: string;
+  sample: boolean;
+  note: string;
+  /** Goal first, then the references marked as helpful, in visit order. */
+  path: string[];
+  paragraphs: string[];
+  nextArtId?: string;
+  /** Who wrote the paragraphs: Claude, the local template, or Claude is still writing. */
+  author?: 'claude' | 'template' | 'writing';
+  /** The path (images, study, title — never the log text) is shown in Community unless this is false. */
+  shared?: boolean;
+}
+
 export interface Session {
   input?: Capture | null;
   started: boolean;
@@ -68,9 +87,12 @@ export interface Session {
   goal: string;
   captures: Capture[];
   practice: Practice | null;
+  journal?: JournalEntry[];
+  /** Set when a study is saved: the path is complete and Trace stops recording. */
+  endedAt?: string | null;
 }
 
-const curatedArtworks: Artwork[] = [
+export const artworks: Artwork[] = [
   {
     "id": "kfp-goal",
     "title": "Misty Coast",
@@ -410,24 +432,13 @@ const curatedArtworks: Artwork[] = [
   }
 ];
 
-export const artworks: Artwork[] = [...curatedArtworks, ...suppliedArtworks as Artwork[]];
-export const tutorialArtIds = new Set(curatedArtworks.map(art => art.id));
+/** The original seed set (drives the atlas) plus the user-supplied library (browsable, collectable). */
+export const allArtworks: Artwork[] = [...artworks, ...libraryArtworks];
+export const artById = Object.fromEntries(allArtworks.map(art => [art.id, art])) as Record<string, Artwork>;
 
-export const artById = Object.fromEntries(artworks.map(art => [art.id, art])) as Record<string, Artwork>;
+type ClusterMeta = { name: string; showOnInstagram?: boolean; profileTitle: string; account: string; description: string; subject: string; color: string; root: string; x: number; y: number; labelX: number; labelY: number };
 
-type CollectionProfile = { name: string; showOnInstagram?: boolean; profileTitle: string; account: string; description: string; subject: string; color: string; root: string; x: number; y: number; labelX: number; labelY: number };
-const suppliedNames: Record<SuppliedCluster, string> = {
-  mucha: 'Alphonse Mucha', schiele: 'Egon Schiele', gesture: 'Gesture Drawing', klimt: 'Gustav Klimt',
-  klaus: 'Klaus', 'kungfu-library': 'Kung Fu Panda Archive', 'shape-language': 'Shape Language',
-  silhouette: 'Silhouette Design', spiderverse: 'Spider-Verse', wolfwalkers: 'Wolfwalkers',
-};
-const suppliedProfiles = Object.fromEntries(Object.entries(suppliedNames).map(([key, name]) => [key, {
-  name, profileTitle: `${name} · Reference collection`, account: `${key.replaceAll('-', '.')}.archive`,
-  description: 'A collection of visual references for small studies', subject: 'Observe, compare & practice',
-  color: '#c5cdb2', root: artworks.find(art => art.cluster === key)!.id, x: 0, y: 0, labelX: 0, labelY: 0,
-}])) as Record<SuppliedCluster, CollectionProfile>;
-
-export const clusters: Record<Cluster, CollectionProfile> = {
+export const clusters: Record<Cluster, ClusterMeta> = {
   "kungfu": {
     "name": "Kung Fu Panda",
     "profileTitle": "Felicia Chen",
@@ -494,7 +505,7 @@ export const clusters: Record<Cluster, CollectionProfile> = {
     "labelX": 440,
     "labelY": 520
   },
-  ...suppliedProfiles
+  ...Object.fromEntries(Object.entries(libraryCollections).map(([key, c]) => [key, { name: c.name, profileTitle: c.name, account: c.account, description: c.description, subject: c.description, color: '#c96442', root: `${key}-01`, x: 0, y: 0, labelX: 0, labelY: 0 }])) as Record<LibraryCluster, ClusterMeta>,
 };
 
 export const sampleNotes = [
@@ -504,21 +515,8 @@ export const sampleNotes = [
 ];
 
 export function notesForArt(artId: string) {
-  const art = artById[artId];
-  const cluster = art?.cluster;
-  const content = art?.tags.includes('ornament') ? [
-    ['Repetition can guide the eye.', 'I traced the largest repeated shapes before copying the small decorations. Their rhythm helped me see how the picture holds together.'],
-    ['A frame is part of the composition.', 'Comparing the border with the central figure helped me notice how a decorative shape can direct attention.'],
-    ['Leave breathing room between patterns.', 'My first study filled every space. Quieter areas made the repeated marks easier to read.'],
-  ] : art?.tags.includes('expressive-line') ? [
-    ['Look for the line of action first.', 'I followed the longest direction through the pose before drawing its outline. It helped me keep the movement in a small study.'],
-    ['A contour can carry weight.', 'I compared the firm and faint edges. Changing the pressure of a few lines made the pose feel less stiff.'],
-    ['Negative space makes a useful check.', 'Looking at the shapes around the figure helped me notice proportions I missed while naming individual body parts.'],
-  ] : art?.image.startsWith('/art/library/') && art.tags.includes('character') ? [
-    ['Read the silhouette before the details.', 'I reduced the character to a flat shape and compared the balance. The pose needed to read before I added features.'],
-    ['A few shapes carry the personality.', 'I compared the largest curves and corners, then tried exaggerating one relationship in my own small study.'],
-    ['Try the same idea in two poses.', 'A second quick attempt helped me see which proportions were essential and which details could change.'],
-  ] : cluster === 'frozen' ? [
+  const cluster = artById[artId]?.cluster;
+  const content = cluster === 'frozen' ? [
     ['Let the light separate the layers.', 'I compared the bright distant castle with the darker cliffs. Grouping those values helped me see how a cold scene can still have a clear focal point.'],
     ['Character shapes carry an expression.', 'I looked at the tilt of the head and the larger curves before trying the small features. That helped me understand the expression.'],
     ['Keep a few edges quiet.', 'I tried leaving the distant shapes less defined. Comparing the studies helped me see where detail actually mattered.'],
@@ -534,26 +532,31 @@ export function notesForArt(artId: string) {
     ['Follow the direction, not just the outline.', 'I noticed which way each group of marks was pointing. Copying the direction gave me a clearer question for the next attempt.'],
     ['Start with the large light and dark shapes.', 'I began with detail and lost the balance. A smaller study helped me see the larger relationships first.'],
     ['Fewer colors helped me compare.', 'Using a small palette made it easier to notice where my version differed.'],
-  ] : sampleNotes.map(note => [note.title, note.text]);
+  ] : cluster === 'kungfu' ? sampleNotes.map(note => [note.title, note.text]) : [
+    ['Find the biggest shapes first.', 'Before any detail, I squinted until only three or four shapes were left. Drawing those first made the rest of the study much calmer.'],
+    ['Watch where the line changes weight.', 'I traced the thick and thin parts of the contour. The heavier lines sat where the form turned or pressed against something.'],
+    ['Compare it with a reference you already kept.', 'Putting this next to an earlier image showed me the same idea solved a different way. That comparison stuck better than copying either one.'],
+  ];
   return sampleNotes.map((note, i) => ({ ...note, id: `${artId}-${note.id}`, artId, title: content[i][0], text: content[i][1] }));
 }
 
 const people = ['Mina L.', 'Kai R.', 'Jules A.', 'Noor S.', 'Alex T.', 'Sam W.'];
 
 export function makeSeedGraph(): { nodes: AtlasNode[]; links: AtlasLink[] } {
-  const nodes: AtlasNode[] = artworks.map(art => ({ id: art.id, kind: clusters[art.cluster].root === art.id ? 'artwork' : 'reference', cluster: art.cluster, title: art.title, artId: art.id, likes: art.id === 'kfp-goal' ? 48 : art.id === 'zoo-city' ? 37 : 8 + (artworks.indexOf(art) * 17 % 32) }));
+  const nodes: AtlasNode[] = artworks.map(art => ({ id: art.id, kind: clusters[art.cluster].root === art.id ? 'artwork' : 'reference', cluster: art.cluster, title: art.title, artId: art.id, likes: art.id === 'kfp-goal' ? 48 : art.id === 'zoo-city' ? 37 : 8 + artworks.indexOf(art) * 2 }));
   const links: AtlasLink[] = [];
-  for (const key of Object.keys(clusters) as Cluster[]) {
+  for (const [key, cluster] of Object.entries(clusters) as [Cluster, typeof clusters[Cluster]][]) {
     const refs = artworks.filter(art => art.cluster === key);
-    refs.slice(1).forEach((ref, index) => links.push({ source: refs[Math.floor(index / 3)].id, target: ref.id, kind: 'reference' }));
-    const count = key === 'kungfu' ? 12 : key === 'zootopia' ? 8 : key === 'vangogh' || key === 'monet' ? 6 : 0;
+    if (!refs.length) continue; // library collections are browsable but not part of the seeded atlas
+    for (const ref of refs) if (ref.id !== cluster.root) links.push({ source: cluster.root, target: ref.id, kind: 'reference' });
+    const count = key === 'frozen' ? 0 : key === 'kungfu' ? 12 : key === 'zootopia' ? 8 : 6;
     const lead = key === 'zootopia' || key === 'monet' ? 'Jules A.' : 'Mina L.';
     for (let i = 0; i < count; i++) {
       const ref = refs[i % refs.length];
       const id = `${key}-study-${i}`;
       const person = i === 0 || i === 2 ? lead : i === 1 || i === 3 ? 'Kai R.' : people[i % people.length];
       const titles = key === 'kungfu' ? ['Blocking the big shapes', 'A warm & cool study', 'A world with depth', 'A quieter balance'] : key === 'zootopia' ? ['A city in three layers', 'A study of warm light', 'Finding a way through', 'A new sense of scale'] : ['Following the rhythm', 'A study in color', 'Finding the light', 'Looking a little closer'];
-      nodes.push({ id, kind: 'study', cluster: key, title: titles[i % 4], artId: ref.id, parentArtId: ref.id, person, likes: Math.max(2, 26 - i * 2), sample: true });
+      nodes.push({ id, kind: 'study', cluster: key, title: titles[i % 4], artId: ref.id, person, likes: Math.max(2, 26 - i * 2), sample: true });
       links.push({ source: ref.id, target: id, kind: 'practice' });
       if (i % 2 === 0) {
         const reflection = notesForArt(ref.id)[(i / 2) % 3];
@@ -561,16 +564,19 @@ export function makeSeedGraph(): { nodes: AtlasNode[]; links: AtlasLink[] } {
         nodes.push({ id: noteId, kind: 'reflection', cluster: key, title: reflection.title, artId: ref.id, person, note: reflection.text, likes: 8 + i });
         links.push({ source: id, target: noteId, kind: 'reflection' });
       }
-      if (i > 1) links.push({ source: `${key}-study-${i - 2}`, target: id, kind: 'journey' });
+      if (i > 1) links.push({ source: `${key}-study-${i - 2}`, target: id, kind: 'practice' });
     }
   }
-  for (const study of owlStudies) {
-    nodes.push({ ...study, parentArtId: owlReferenceId, kind: 'study', cluster: 'kungfu-library', note: study.text });
-    links.push({ source: owlReferenceId, target: study.id, kind: 'practice' });
-  }
-  for (const insight of owlInsights) {
-    nodes.push({ ...insight, artId: owlReferenceId, kind: 'reflection', cluster: 'kungfu-library', note: insight.text });
-    links.push({ source: owlReferenceId, target: insight.id, kind: 'reflection' });
+  // User-supplied collections: each is a small star around its first image, and those stars
+  // hang off the image that anchors their learning-theme cluster.
+  for (const [key, c] of Object.entries(libraryCollections) as [LibraryCluster, typeof libraryCollections[LibraryCluster]][]) {
+    const root = `${key}-01`;
+    const anchor = libraryFeatureRoots[libraryFeature[key]];
+    libraryArtworks.filter(a => a.cluster === key).forEach((art, i) => {
+      nodes.push({ id: art.id, kind: art.id === anchor ? 'artwork' : 'reference', cluster: key, title: art.title, artId: art.id, likes: Math.max(3, c.sizes.length - i) });
+      if (art.id !== root) links.push({ source: root, target: art.id, kind: 'reference' });
+    });
+    if (root !== anchor) links.push({ source: anchor, target: root, kind: 'reference' });
   }
   nodes.push({ id: 'tutorial-shapes', kind: 'tutorial', cluster: 'kungfu', title: 'Seeing a world in three value groups', artId: 'kfp-goal', likes: 18, note: 'A demo lesson outline: identify three large value groups, make a small study, and compare how your shapes guide the eye.' });
   links.push({ source: 'kfp-goal', target: 'tutorial-shapes', kind: 'reference' });
@@ -583,7 +589,6 @@ export function makeSeedGraph(): { nodes: AtlasNode[]; links: AtlasLink[] } {
 export const seedGraph = makeSeedGraph();
 
 export const learningPaths = [
-  ...owlLearningPaths,
   { id: 'mina-world', name: 'Mina L.', initials: 'ML', title: 'Making a world feel deep', description: 'From a Kung Fu Panda landscape to a study of shape and light.', nodes: ['kfp-goal', 'kfp-shapes', 'kungfu-study-0', 'kungfu-reflection-0', 'kfp-light', 'kungfu-study-2'], captions: ['Started with a question: what makes this world feel deep?', 'Looked at how the artist simplified mountain shapes.', 'Tried a first study using three large value groups.', 'Noticed that spatial layers mattered more than tiny details.', 'Compared warm light against cool surrounding shapes.', 'Tried again, with a clearer focal point and quieter distance.'] },
   { id: 'jules-worlds', name: 'Jules A.', initials: 'JA', title: 'A detour from mountains to a city', description: 'Following the same question through Kung Fu Panda and Zootopia.', nodes: ['kfp-goal', 'kfp-atmosphere', 'zoo-city', 'zootopia-study-0', 'zootopia-reflection-0', 'zoo-light', 'zootopia-study-2'], captions: ['Began with the layered shapes in a Kung Fu Panda environment.', 'Compared another setting with strong foreground silhouettes.', 'Found a Zootopia city using a similar route for the eye.', 'Tried blocking the city into simple spatial layers.', 'Noticed how the largest shapes lead attention.', 'Compared the way a station frames a small character.', 'Returned to practice with a new understanding of depth and scale.'] },
   { id: 'kai-color', name: 'Kai R.', initials: 'KR', title: 'Letting a small light lead', description: 'Another route through the same starting artwork.', nodes: ['kfp-goal', 'kfp-light', 'kungfu-study-1', 'kfp-atmosphere', 'kungfu-study-3'], captions: ['Started from the same misty coast.', 'Looked for warm and cool relationships in the harbor.', 'Made a small color study.', 'Compared the warm backlight in a different environment.', 'Tried a second study with a quieter palette.'] },
@@ -596,7 +601,7 @@ export const learningPaths = [
 for (const path of learningPaths) {
   path.nodes.slice(1).forEach((id, i) => {
     const source = path.nodes[i];
-    if (!seedGraph.links.some(link => link.source === source && link.target === id)) seedGraph.links.push({ source, target: id, kind: 'journey' });
+    if (!seedGraph.links.some(link => link.source === source && link.target === id)) seedGraph.links.push({ source, target: id, kind: 'reference' });
   });
 }
 

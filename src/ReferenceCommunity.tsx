@@ -1,95 +1,183 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Compass, Heart, Image as ImageIcon, Lightbulb, Paintbrush, Play, Plus, Quote, Route, X } from 'lucide-react';
-import { artById, learningPaths, seedGraph } from './data';
+import { ArrowLeft, ArrowRight, Brush, Compass, Eye, EyeOff, Heart, Image as ImageIcon, PenLine, Play, Quote, Route, X } from 'lucide-react';
+import { artById } from './data';
 import type { Session } from './data';
-import { communityFeatures, featureForArt, resourcesForArt } from './learning';
+import { communityFeatures, featureForId, resourcesForArt } from './learning';
 import type { CommunityResource } from './learning';
-import { isPeerStudy } from './peerStudies';
+import type { PrivateNote } from './state';
 
-type Filter = 'all' | CommunityResource['kind'];
-const insightPositions = [[15, 22], [85, 22], [14, 51], [86, 51], [50, 7]];
-const kindLabel = { study: 'Study', reflection: 'Insight', tutorial: 'Tutorial' };
+interface Lesson { artId: string; src: string; title: string; steps: { time: number; title: string; text: string }[] }
+let lessonsPromise: Promise<Record<string, Lesson>> | null = null;
+function loadLessons() {
+  lessonsPromise ??= fetch('/tutorials/manifest.json')
+    .then(r => r.json())
+    .then((m: { lessons: Lesson[] }) => Object.fromEntries(m.lessons.map(l => [l.artId, l])))
+    .catch(() => ({}));
+  return lessonsPromise;
+}
 
-export default function ReferenceCommunity({ artId, session, votes, ownNotes, showPeerStudies, onPath, onVote, onNote, onOverview, onMyPath, onFindPath }: {
+type Kind = CommunityResource['kind'] | 'mine' | 'note';
+interface Item { id: string; kind: Kind; title: string; person: string; image?: string; imageClass?: string; provenance: string; text: string; likes: number; src?: string; sample?: boolean }
+
+const slots: [number, number][] = [[20, 21], [79, 21], [12, 55], [39, 84], [78, 79], [90, 49], [50, 13], [13, 82], [63, 14]];
+const CX = 50, CY = 47;
+const filters: { id: 'all' | 'study' | 'reflection' | 'tutorial'; label: string }[] = [
+  { id: 'all', label: 'All notes' }, { id: 'study', label: 'Studies' }, { id: 'reflection', label: 'Insights' }, { id: 'tutorial', label: 'Tutorials' },
+];
+
+interface Props {
   artId: string;
   session: Session;
-  votes: string[];
-  ownNotes: { id: string; artId?: string; text: string }[];
-  showPeerStudies: boolean;
-  onPath: (index: number) => void;
+  votes: Record<string, boolean>;
+  notes: PrivateNote[];
+  hideOthers: boolean;
+  onToggleHideOthers: () => void;
   onVote: (id: string) => void;
-  onNote: (text: string) => void;
-  onOverview: () => void;
+  onSaveNote: (text: string) => void;
+  onAllThemes: () => void;
   onMyPath: () => void;
   onFindPath: () => void;
-}) {
-  const art = artById[artId];
-  const feature = communityFeatures[featureForArt(art)];
-  const [filter, setFilter] = useState<Filter>('all');
-  const [selected, setSelected] = useState<string | null>(null);
-  const [draft, setDraft] = useState('');
-  const [showOriginal, setShowOriginal] = useState(false);
-  const detailRef = useRef<HTMLElement>(null);
-  const [lessonSteps, setLessonSteps] = useState<{ time: number; title: string; text: string }[]>([]);
-  const allResources = useMemo(() => {
-    const resources = resourcesForArt(artId);
-    if (session.practice && session.input?.artId === artId) resources.push({ id: 'your-related-study', kind: 'study', parentArtId: artId, title: session.practice.title, person: 'You', image: session.practice.image, provenance: session.practice.sample ? 'Your saved illustrative demo study' : 'Your private practice', text: session.practice.note || 'Return to your own marks. What is different from the reference?', likes: 0 });
-    ownNotes.filter(note => note.artId === artId).slice(-2).forEach(note => resources.push({ id: note.id, kind: 'reflection', title: 'Your small discovery', person: 'You', provenance: 'Private note · saved on this device', text: note.text, likes: 0 }));
-    return resources;
-  }, [artId, ownNotes, session.practice, session.input?.artId]);
-  const resources = allResources.filter(resource => showPeerStudies || !isPeerStudy(resource));
-  const visible = resources.filter(resource => filter === 'all' || resource.kind === filter);
-  const current = resources.find(resource => resource.id === selected);
-  const relatedPaths = learningPaths.map((path, index) => ({ ...path, index })).filter(path => path.nodes.includes(artId) && path.nodes.indexOf(artId) < path.nodes.length - 1);
-  const currentPath = current?.kind === 'study' ? relatedPaths.find(path => path.nodes.includes(current.id)) : null;
-  const studies = visible.filter(resource => resource.kind === 'study');
-  function position(resource: CommunityResource) {
-    if (resource.kind === 'study') return [(studies.indexOf(resource) + 1) / (studies.length + 1) * 100, 79];
-    if (resource.kind === 'tutorial') return [86, 51];
-    const index = visible.filter(item => item.kind === 'reflection').indexOf(resource);
-    return insightPositions[index % insightPositions.length];
-  }
-  useEffect(() => {
-    if (!showPeerStudies && filter === 'study') setFilter('all');
-  }, [showPeerStudies, filter]);
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/tutorials/manifest.json').then(response => response.json()).then(data => {
-      if (!cancelled) setLessonSteps(data.lessons.find((lesson: { artId: string }) => lesson.artId === artId)?.steps || []);
-    }).catch(() => { /* The video itself includes the timed teaching captions. */ });
-    return () => { cancelled = true; };
-  }, [artId]);
-  function selectResource(id: string | null) { setSelected(id); setShowOriginal(false); detailRef.current?.scrollTo({ top: 0 }); }
+  onComparePractice: () => void;
+}
 
-  return <section className="reference-community" aria-label={`Community around ${art.title}`}>
-    <header className="reference-community-heading"><div><button onClick={onOverview}><ArrowLeft size={13} />All learning themes</button><h1>{art.title}</h1><p>{feature.title}<span>·</span>One reference, many ways of learning</p></div><button className="hub-my-path" onClick={relatedPaths.length ? onFindPath : onMyPath}><Route size={14} />{relatedPaths.length ? `${relatedPaths.length} learning paths` : 'My path'}<ArrowRight size={13} /></button></header>
-    <div className="hub-layout"><main className="hub-main"><nav className="hub-filters" aria-label="Filter connected notes">{(['all', 'study', 'reflection', 'tutorial'] as Filter[]).map(kind => <button className={filter === kind ? 'active' : ''} key={kind} onClick={() => setFilter(kind)}>{kind === 'all' ? 'All notes' : kind === 'study' ? 'Studies' : kind === 'reflection' ? 'Insights' : 'Tutorials'}<span>{kind === 'all' ? resources.length : resources.filter(resource => resource.kind === kind).length}</span></button>)}</nav>
-      <div className="reference-note-graph" data-reference-id={artId} aria-label={`Image-centered graph for ${art.title}`}>
-        <div className="reference-graph-halo" />
-        <svg className="reference-note-edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">{visible.map(resource => { const [x, y] = position(resource); const study = resource.kind === 'study'; return <path key={resource.id} data-parent-art={study ? artId : undefined} d={study ? `M 50 46 Q 50 60 ${x} 68` : `M 50 31 Q ${(50 + x) / 2} ${(31 + y) / 2 - 3} ${x} ${y}`} className={`${selected === resource.id ? 'selected' : ''} ${study ? 'peer-child-edge' : ''}`} />; })}</svg>
-        <button className={`reference-center ${!current ? 'selected' : ''}`} onClick={() => selectResource(null)} aria-label={`Reference image ${art.title}`}><span><img src={art.image} alt={art.title} /><i><Compass size={11} />Shared reference</i></span><strong>{art.title}</strong><small>{art.artist}</small></button>
-        {studies.length > 0 && <span className="study-branch-label">Studies of this reference</span>}
-        {!showPeerStudies && !studies.length && <p className="peer-studies-hidden-note">Peer studies are hidden.<br />Enable “Peer studies” to compare attempts.</p>}
-        {visible.map(resource => { const [x, y] = position(resource); return <button key={resource.id} data-parent-art={resource.kind === 'study' ? resource.parentArtId : undefined} className={`connected-note note-${resource.kind} ${selected === resource.id ? 'selected' : ''}`} style={{ left: `${x}%`, top: `${y}%` }} onClick={() => selectResource(resource.id)} aria-label={`Open ${kindLabel[resource.kind].toLowerCase()}: ${resource.title}`}>
-          {resource.kind === 'study' ? <><span className="connected-study-image"><img className={resource.imageClass} src={resource.image} alt={resource.title} /><i>{resource.person === 'You' ? 'Your study' : resource.provenance.startsWith('AI') ? 'AI demo' : resource.provenance.startsWith('User-supplied') ? 'Demo study' : 'Exercise'}</i></span><strong>{resource.title}</strong><small>{resource.person}</small></> : resource.kind === 'tutorial' ? <><span className="connected-video-image"><img src={art.image} alt="" /><Play size={19} fill="currentColor" /><i>0:12</i></span><strong>Observe, try, compare</strong><small>Video tutorial · demo</small></> : <><span className="connected-quote"><Quote size={13} /><strong>{resource.title}</strong></span><small>{resource.person} · {resource.person === 'You' ? 'Private' : 'Demo insight'}</small></>}
-        </button>; })}
+export function ReferenceCommunity({ artId, session, votes, notes, hideOthers, onToggleHideOthers, onVote, onSaveNote, onAllThemes, onMyPath, onFindPath, onComparePractice }: Props) {
+  const art = artById[artId];
+  const feature = communityFeatures[featureForId(artId)];
+  const [filter, setFilter] = useState<'all' | 'study' | 'reflection' | 'tutorial'>('all');
+  const [selected, setSelected] = useState<string | null>(null);
+  const [showRef, setShowRef] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [lessons, setLessons] = useState<Record<string, Lesson>>({});
+  const panel = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { loadLessons().then(setLessons); }, []);
+  useEffect(() => { setSelected(null); setFilter('all'); setDraft(''); }, [artId]);
+  useEffect(() => { panel.current?.scrollTo({ top: 0 }); setShowRef(false); }, [selected, artId]);
+
+  const allItems = useMemo<Item[]>(() => {
+    const list: Item[] = resourcesForArt(artId);
+    if (session.practice && session.input?.artId === artId) {
+      list.push({ id: session.practice.id, kind: 'mine', title: session.practice.title, person: 'You', image: session.practice.image, provenance: session.practice.sample ? 'Your study · includes illustrative demo canvas' : 'Your study · private', text: session.practice.note || 'No reflection written yet.', likes: 0, sample: session.practice.sample });
+    }
+    notes.filter(n => n.artId === artId).slice(-2).forEach(n => list.push({ id: n.id, kind: 'note', title: 'Your note', person: 'You', provenance: `Private note · ${n.time}`, text: n.text, likes: 0 }));
+    return list;
+  }, [artId, session.practice, session.input, notes]);
+  // A drawn study by someone else: not your own, and not a reference-based exercise.
+  const isOthersDrawing = (i: Item) => i.kind === 'study' && !i.imageClass;
+  const items = (hideOthers ? allItems.filter(i => !isOthersDrawing(i)) : allItems).slice(0, slots.length);
+  const hiddenCount = hideOthers ? allItems.filter(isOthersDrawing).length : 0;
+
+  const counts = { all: items.length, study: items.filter(i => i.kind === 'study' || i.kind === 'mine').length, reflection: items.filter(i => i.kind === 'reflection' || i.kind === 'note').length, tutorial: items.filter(i => i.kind === 'tutorial').length };
+  const visible = (i: Item) => filter === 'all' || i.kind === filter || (filter === 'study' && i.kind === 'mine') || (filter === 'reflection' && i.kind === 'note');
+  const current = items.find(i => i.id === selected) || items[0];
+
+  return (
+    <section className="rc">
+      <header className="rc-head">
+        <div className="rc-title">
+          <button className="rc-back" onClick={onAllThemes}><ArrowLeft size={13} /> All learning themes</button>
+          <h2 className="serif">{art.title}</h2>
+          <p>{feature.title} · One reference, many ways of learning</p>
+        </div>
+        <div className="rc-actions">
+          <button className={`btn sm toggle-others ${hideOthers ? 'on' : ''}`} aria-pressed={hideOthers} onClick={onToggleHideOthers}
+            title={hideOthers ? 'Show studies drawn by other people' : 'Hide studies drawn by other people'}>
+            {hideOthers ? <><EyeOff size={14} /> Show others' studies</> : <><Eye size={14} /> Hide others' studies</>}
+          </button>
+          <button className="btn sm" onClick={onFindPath}><Route size={14} /> Paths from here</button>
+          {session.input && <button className="btn sm" onClick={onMyPath}><Compass size={14} /> My path <ArrowRight size={13} /></button>}
+        </div>
+        <nav className="rc-filters">
+          {filters.map(f => <button key={f.id} className={filter === f.id ? 'on' : ''} onClick={() => setFilter(f.id)}>{f.label}<i>{counts[f.id]}</i></button>)}
+        </nav>
+      </header>
+      <div className="rc-body">
+        <div className="rc-graph">
+          {/* One switch for people who would rather not see what others drew. */}
+          {hideOthers && (
+            <div className="rc-others on">
+              <EyeOff size={13} /> {hiddenCount ? `${hiddenCount} ${hiddenCount === 1 ? 'study' : 'studies'} by others hidden` : "Others' studies hidden"}
+              <button onClick={onToggleHideOthers}>Show</button>
+            </div>
+          )}
+          <svg className="rc-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+            {items.map((item, i) => {
+              const [x, y] = slots[i];
+              const mx = (x + CX) / 2 + (y - CY) * .18, my = (y + CY) / 2 - (x - CX) * .18;
+              return <path key={item.id} d={`M${CX} ${CY} Q${mx} ${my} ${x} ${y}`} className={`${item.kind} ${visible(item) ? '' : 'dim'} ${current?.id === item.id ? 'hot' : ''}`} />;
+            })}
+          </svg>
+          <div className="rc-center" style={{ left: `${CX}%`, top: `${CY}%` }}>
+            <span className="rc-center-frame">
+              <img src={art.image} alt={art.title} />
+              <span className="badge">Shared reference</span>
+            </span>
+            <strong className="serif">{art.title}</strong>
+            <span>{art.artist}</span>
+          </div>
+          {items.map((item, i) => (
+            <button key={item.id} className={`rc-node ${item.kind} ${visible(item) ? '' : 'dim'} ${current?.id === item.id ? 'on' : ''}`}
+              style={{ left: `${slots[i][0]}%`, top: `${slots[i][1]}%` }} onClick={() => setSelected(item.id)}>
+              {item.kind === 'reflection' || item.kind === 'note'
+                ? <span className="rc-quote"><Quote size={11} /><span className="serif">{item.title}</span></span>
+                : <span className="rc-thumb">
+                    <img src={item.image} alt="" className={item.imageClass} />
+                    {item.kind === 'tutorial' && <span className="rc-play"><Play size={14} fill="currentColor" /></span>}
+                    {item.kind === 'tutorial' && <span className="rc-dur">0:12</span>}
+                    <span className="badge">{item.kind === 'mine' ? 'Your study' : item.kind === 'tutorial' ? 'Lesson' : item.imageClass ? 'Exercise' : item.provenance.startsWith('AI') ? 'AI demo' : 'Line study'}</span>
+                  </span>}
+              {item.kind !== 'reflection' && item.kind !== 'note' && <strong>{item.title}</strong>}
+              <span className="rc-person">{item.person}{item.kind === 'reflection' ? ' · Demo insight' : ''}</span>
+            </button>
+          ))}
+          <footer className="rc-legend"><i className="study" /> Practice <i className="reflection" /> Insight <i className="tutorial" /> Tutorial <span className="spacer" /> Every note here connects to this one image</footer>
+        </div>
+
+        <aside className="rc-panel" ref={panel}>
+          {current && <Detail item={current} art={art} showRef={showRef} setShowRef={setShowRef} lesson={lessons[artId]} voted={!!votes[current.id]} onVote={() => onVote(current.id)} onCompare={onComparePractice} onClose={() => setSelected(null)} />}
+          <div className="rc-write">
+            <label className="serif" htmlFor="rc-note">What did you notice?</label>
+            <textarea id="rc-note" value={draft} onChange={e => setDraft(e.target.value)} placeholder={`One thing ${art.title} taught you to look for…`} rows={3} />
+            <button className="btn sm dark" disabled={!draft.trim()} onClick={() => { onSaveNote(draft.trim()); setDraft(''); }}><PenLine size={13} /> Save my note</button>
+            <span className="rc-private">Saved to this browser only, attached to this image.</span>
+          </div>
+        </aside>
       </div>
-      <footer className="hub-legend"><span><i className="dot lilac" />Practice</span><span><i className="dot lime" />Insight</span><span><i className="dot sand" />Tutorial</span><small>Connected to this image</small></footer>
-    </main><aside ref={detailRef} className="hub-detail" aria-label="Connected note details">
-      {current ? <>
-        <div className="panel-eyebrow">{kindLabel[current.kind]}<button className="icon-button" aria-label="Back to reference details" onClick={() => selectResource(null)}><X size={15} /></button></div>
-        {current.kind === 'tutorial' ? <video key={current.src} src={current.src} poster={art.image} controls playsInline preload="metadata" aria-label={`Tutorial video for ${art.title}`} /> : current.kind === 'study' ? <div className="hub-study-preview" data-parent-art={artId}><img className={!showOriginal ? current.imageClass : ''} src={showOriginal ? art.image : current.image} alt={showOriginal ? 'Original reference' : current.title} /><button onClick={() => setShowOriginal(!showOriginal)}><ImageIcon size={11} />{showOriginal ? 'Show study' : 'Show reference'}</button></div> : <Quote className="hub-large-quote" size={30} />}
-        <span className="hub-provenance">{current.provenance}</span><h2>{current.title}</h2><div className="hub-person"><span className="avatar tiny">{current.person === 'You' ? 'Y' : current.person.split(' ').map(word => word[0]).join('')}</span><span>{current.person}</span></div><p className="hub-detail-copy">{current.text}</p>
-        {currentPath && <button className="primary-button full related-path-action" onClick={() => onPath(currentPath.index)}><Route size={14} />Follow this learning path<ArrowRight size={13} /></button>}
-        {current.kind === 'tutorial' && <ol className="hub-lesson-steps">{lessonSteps.map(step => <li key={step.time}><span>0:{String(step.time).padStart(2, '0')}</span><strong>{step.title}</strong><p>{step.text}</p></li>)}</ol>}
-        {current.person !== 'You' && <button className={`hub-helpful ${votes.includes(current.id) ? 'active' : ''}`} onClick={() => onVote(current.id)}><Heart size={14} fill={votes.includes(current.id) ? 'currentColor' : 'none'} />{current.likes + Number(votes.includes(current.id))}<span>Helpful · demo</span></button>}
-      </> : <>
-        <span className="panel-eyebrow">A SHARED STARTING POINT</span><img className="hub-reference-preview" src={art.image} alt={art.title} /><h2>{art.title}</h2><p className="hub-credit">{art.credit}</p><p className="hub-detail-copy">Compare different attempts, read what someone noticed, and take a question into your next study.</p><div className="hub-counts"><span><Paintbrush size={14} />{resources.filter(resource => resource.kind === 'study').length} studies</span><span><Lightbulb size={14} />{resources.filter(resource => resource.kind === 'reflection').length} insights</span><span><Play size={14} />{resources.filter(resource => resource.kind === 'tutorial').length} tutorial</span></div><button className="primary-button full" onClick={onFindPath}><Route size={14} />Find a learning path<ArrowRight size={13} /></button><p className="hub-demo-note">Community people, notes, and learning paths are illustrative. Supplied and generated study images are labeled.</p>
-      </>}
-      {relatedPaths.length > 0 && <section className="reference-learning-paths" aria-label={`Learning paths from ${art.title}`}><h3>{relatedPaths.length} paths from this reference</h3>{relatedPaths.map(path => { const outcome = seedGraph.nodes.find(node => node.id === path.nodes[path.nodes.length - 1])!; return <button key={path.id} onClick={() => onPath(path.index)} aria-label={`Follow path: ${path.title}`}>
-        {showPeerStudies && outcome.image ? <img data-parent-art={outcome.parentArtId} src={outcome.image} alt="" /> : <span><Route size={17} /></span>}<div><strong>{path.title}</strong><small>{path.name} · {path.nodes.length - path.nodes.indexOf(artId)} steps</small></div><ArrowRight size={12} />
-      </button>; })}</section>}
-      <form className="hub-add-note" onSubmit={event => { event.preventDefault(); if (!draft.trim()) return; onNote(draft.trim()); setDraft(''); }}><label htmlFor="hub-discovery">What did you notice?</label><textarea id="hub-discovery" value={draft} onChange={event => setDraft(event.target.value)} maxLength={1000} rows={2} placeholder="Leave a small discovery about this image…" /><button disabled={!draft.trim()}><Plus size={12} />Save my note<Check size={12} /></button></form>
-    </aside></div>
-  </section>;
+    </section>
+  );
+}
+
+function Detail({ item, art, showRef, setShowRef, lesson, voted, onVote, onCompare, onClose }: {
+  item: Item; art: { image: string; title: string }; showRef: boolean; setShowRef: (v: boolean) => void; lesson?: Lesson; voted: boolean; onVote: () => void; onCompare: () => void; onClose: () => void;
+}) {
+  const kindLabel = { study: 'Study', mine: 'Your study', reflection: 'Insight', note: 'Your note', tutorial: 'Tutorial' }[item.kind];
+  return (
+    <div className="rc-detail">
+      <div className="rc-detail-top"><span className="eyebrow">{kindLabel}</span><button className="icon-btn" onClick={onClose} aria-label="Back to first item"><X size={15} /></button></div>
+      {(item.kind === 'study' || item.kind === 'mine') && (
+        <figure className="rc-figure">
+          <img src={showRef ? art.image : item.image} alt="" className={showRef ? '' : item.imageClass} />
+          <button className="rc-swap" onClick={() => setShowRef(!showRef)}><ImageIcon size={12} /> {showRef ? 'Show study' : 'Show reference'}</button>
+        </figure>
+      )}
+      {item.kind === 'tutorial' && item.src && (
+        <figure className="rc-figure video">
+          <video src={item.src} poster={art.image} controls playsInline preload="metadata" />
+        </figure>
+      )}
+      <span className="rc-prov">{item.provenance}</span>
+      <h3 className="serif">{item.kind === 'tutorial' && lesson ? lesson.title : item.title}</h3>
+      {item.kind !== 'tutorial' && item.kind !== 'note' && (
+        <div className="rc-author"><span className="avatar">{item.person.split(' ').map(w => w[0]).join('').slice(0, 2)}</span>{item.person}</div>
+      )}
+      <p className="rc-text">{item.text}</p>
+      {item.kind === 'tutorial' && lesson && (
+        <ol className="rc-steps">{lesson.steps.map(s => <li key={s.time}><span>0:{String(s.time).padStart(2, '0')}</span><div><strong>{s.title}</strong><p>{s.text}</p></div></li>)}</ol>
+      )}
+      {item.kind === 'reflection' && (
+        <button className={`rc-vote ${voted ? 'on' : ''}`} onClick={onVote}><Heart size={14} fill={voted ? 'currentColor' : 'none'} /> {item.likes + (voted ? 1 : 0)} · Helpful</button>
+      )}
+      {item.kind === 'mine' && <button className="btn sm" onClick={onCompare}><Brush size={13} /> Compare with the reference</button>}
+    </div>
+  );
 }

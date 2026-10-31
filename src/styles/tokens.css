@@ -1,0 +1,115 @@
+/* Trace — Claude edition design tokens.
+   Warm paper, ink type, a single clay accent. Colour is reserved for meaning. */
+:root {
+  --stage-a: #f5f2eb;
+  --stage-b: #e8e3d7;
+
+  --paper: #faf9f5;
+  --paper-2: #f3f0e8;
+  --paper-3: #ebe6da;
+  --card: #fffefb;
+  --line: #e4ded1;
+  --line-2: #d4ccbc;
+
+  --ink: #1f1e1d;
+  --ink-2: #3d3a35;
+  --muted: #6f6b63;
+  --faint: #a29d92;
+
+  --clay: #c96442;
+  --clay-deep: #a74f30;
+  --clay-soft: #f2dfd4;
+  --clay-wash: #faf0ea;
+
+  /* Learning-feature hues — used for nodes, threads and theme clusters only. */
+  --sage: #7d8c6c;
+  --slate: #6b81a2;
+  --ochre: #c08f3b;
+  --plum: #8b7aae;
+  --sepia: #9a6b4f;
+  --teal: #5f8f8a;
+  --rose: #b5546b;
+
+  --serif: 'Newsreader', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --shadow-sm: 0 1px 2px rgb(31 30 29 / 6%), 0 0 0 1px rgb(31 30 29 / 4%);
+  --shadow-md: 0 8px 24px -8px rgb(60 45 30 / 18%), 0 0 0 1px rgb(31 30 29 / 5%);
+  --shadow-lg: 0 24px 60px -18px rgb(60 45 30 / 32%), 0 0 0 1px rgb(31 30 29 / 6%);
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --t: 180ms;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: radial-gradient(ellipse at 50% 35%, var(--stage-a) 0%, var(--stage-b) 100%);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss01', 'cv11';
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+button:disabled { cursor: default; }
+img { display: block; max-width: 100%; }
+:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; border-radius: 6px; }
+
+.serif { font-family: var(--serif); font-weight: 400; letter-spacing: -0.01em; }
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Buttons */
+.btn {
+  white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 38px; padding: 0 16px; border-radius: 10px;
+  font-size: 13.5px; font-weight: 500;
+  border: 1px solid var(--line-2); background: var(--card); color: var(--ink);
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease), transform var(--t) var(--ease);
+}
+.btn:hover { background: var(--paper-2); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--clay); border-color: var(--clay); color: #fff; }
+.btn.primary:hover { background: var(--clay-deep); border-color: var(--clay-deep); }
+.btn.dark { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.btn.dark:hover { background: var(--ink-2); }
+.btn.ghost { background: transparent; border-color: transparent; }
+.btn.ghost:hover { background: var(--paper-2); }
+.btn.sm { height: 30px; padding: 0 11px; font-size: 12.5px; border-radius: 8px; }
+.icon-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; border-radius: 9px;
+  color: var(--ink-2); transition: background var(--t) var(--ease);
+}
+.icon-btn:hover { background: rgb(31 30 29 / 6%); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 24px; padding: 0 9px; border-radius: 999px;
+  font-size: 11.5px; color: var(--ink-2);
+  background: var(--paper-2); border: 1px solid var(--line);
+}
+.badge {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 5px; background: rgb(31 30 29 / 72%); color: #fff;
+}
+
+/* Reference-based analysis treatments (never presented as a learner's work). */
+.analysis-values { filter: grayscale(1) contrast(1.35); }
+.analysis-color { filter: saturate(1.7) contrast(1.1); }
+.demo-study { filter: saturate(.75) contrast(.92) sepia(.12) blur(.4px); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

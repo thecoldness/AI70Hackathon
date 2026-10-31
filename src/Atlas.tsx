@@ -1,224 +1,428 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
-import type { SimulationLinkDatum, SimulationNodeDatum } from 'd3-force';
-import { Expand, Minus, Plus, Quote, Route, Sparkles, Video } from 'lucide-react';
-import { artById, seedGraph } from './data';
-import { communityFeatures, featureForId, personalThreads, focusForArt } from './learning';
-import type { AtlasLink, AtlasNode, Session } from './data';
-import { overviewPreviewIds } from './graphOverview';
-import { isPeerStudy } from './peerStudies';
+import type { SimulationLinkDatum } from 'd3-force';
+import { ArrowRight, Maximize, Minus, Plus, Route } from 'lucide-react';
+import { artById, learningPaths, seedGraph } from './data';
+import type { AtlasNode } from './data';
+import { communityFeatures, featureForId, peerStudiesForArt } from './learning';
+import { libraryHighlights } from './library';
+import { suggestRoutesFrom } from './routes';
+import type { FeatureGroup } from './learning';
 
-type PositionedNode = AtlasNode & SimulationNodeDatum & { x: number; y: number };
-const previewIds = overviewPreviewIds(seedGraph.nodes);
+type SimNode = AtlasNode & { x: number; y: number; group: FeatureGroup };
+type SimLink = SimulationLinkDatum<SimNode> & { kind: string; source: SimNode; target: SimNode };
 
-function layoutGraph(): PositionedNode[] {
-  const counts: Record<string, number> = {};
-  const nodes = seedGraph.nodes.filter(node => !isPeerStudy(node)).map((node, index) => {
-    const cluster = communityFeatures[featureForId(node.artId)];
-    const n = counts[featureForId(node.artId)] = (counts[featureForId(node.artId)] || 0) + 1;
-    const theta = n * 2.39996;
-    const radius = node.id === cluster.root ? 0 : 22 + Math.sqrt(n) * 13;
-    return { ...node, x: cluster.x + Math.cos(theta) * radius, y: cluster.y + Math.sin(theta) * radius, ...(node.id === cluster.root ? { fx: cluster.x, fy: cluster.y } : {}), index } as PositionedNode;
-  });
-  const referenceIds = new Set(nodes.map(node => node.id));
-  const links = seedGraph.links.filter(link => referenceIds.has(link.source) && referenceIds.has(link.target)).map(link => ({ ...link })) as SimulationLinkDatum<PositionedNode>[];
-  const simulation = forceSimulation(nodes)
-    .force('link', forceLink<PositionedNode, SimulationLinkDatum<PositionedNode>>(links).id(node => node.id).distance(link => featureForId((link.source as PositionedNode).artId) !== featureForId((link.target as PositionedNode).artId) ? 430 : 38).strength(0.12))
-    .force('charge', forceManyBody().strength(-14).distanceMax(220))
-    .force('x', forceX<PositionedNode>(node => communityFeatures[featureForId(node.artId)].x).strength(0.11))
-    .force('y', forceY<PositionedNode>(node => communityFeatures[featureForId(node.artId)].y).strength(0.11))
-    .force('collide', forceCollide<PositionedNode>(node => previewIds.has(node.id) ? 78 : 9).strength(0.9))
-    .stop();
-  simulation.tick(220);
-  // Peer work belongs to one exact original. It never participates in the
-  // free-floating force layout or takes a neighboring reference as its parent.
-  const originals = new Map(nodes.map(node => [node.id, node]));
-  const peers = seedGraph.nodes.filter(isPeerStudy);
-  for (const study of peers) {
-    const parentId = study.parentArtId!;
-    const parent = originals.get(parentId)!;
-    const siblings = peers.filter(node => node.parentArtId === parentId);
-    const index = siblings.indexOf(study);
-    const columns = Math.min(3, siblings.length);
-    nodes.push({ ...study, x: parent.x + ((index % 3) - (columns - 1) / 2) * 90, y: parent.y + 130 + Math.floor(index / 3) * 100 } as PositionedNode);
+const featureColor: Record<FeatureGroup, string> = { character: 'var(--ochre)', depth: 'var(--clay)', marks: 'var(--sage)', light: 'var(--plum)', line: 'var(--sepia)', shape: 'var(--teal)', graphic: 'var(--rose)' };
+
+/**
+ * A few images stand for each theme cluster; every other artwork draws as a dot.
+ * New clusters use their chosen highlights; the original four use their root plus their two most-liked references.
+ */
+const showcase = (() => {
+  const ids = new Set<string>(Object.values(libraryHighlights).flat());
+  for (const [g, f] of Object.entries(communityFeatures) as [FeatureGroup, typeof communityFeatures[FeatureGroup]][]) {
+    if (g in libraryHighlights) continue;
+    ids.add(f.root);
+    seedGraph.nodes
+      .filter(n => (n.kind === 'reference' || n.kind === 'artwork') && n.id !== f.root && featureForId(n.artId) === g)
+      .sort((a, b) => b.likes - a.likes).slice(0, 2)
+      .forEach(n => ids.add(n.id));
   }
-  return nodes;
+  return ids;
+})();
+const isArt = (n: AtlasNode) => n.kind === 'artwork' || n.kind === 'reference';
+const themeRoots = new Set(Object.values(communityFeatures).map(f => f.root));
+
+// The layout is computed once: deterministic, and identical every time the atlas opens.
+const layout = (() => {
+  const roots = new Map(Object.values(communityFeatures).map(f => [f.root, f]));
+  const nodes = seedGraph.nodes.map((n, i) => {
+    const group = featureForId(n.artId);
+    const c = communityFeatures[group];
+    const root = roots.get(n.id);
+    return { ...n, group, x: c.x + Math.cos(i * 2.4) * (12 + i % 30), y: c.y + Math.sin(i * 2.4) * (12 + i % 30), fx: root ? root.x : null, fy: root ? root.y : null } as SimNode;
+  });
+  const byId = new Map(nodes.map(n => [n.id, n]));
+  // Pin each cluster's supporting images around its root. For each one, try 24 directions and keep
+  // the spot whose enlarged image box stays furthest clear of every root and every image already placed.
+  const G = 3.75; // the largest zoom-out growth, so boxes are checked at their biggest
+  const half = (root: boolean) => root ? [(120 * G) / 2 + 8, (120 * .74 * G) / 2 + 8] : [(92 * G) / 2 + 8, (92 * .74 * G) / 2 + 8];
+  const placed: { x: number; y: number; root: boolean }[] = Object.values(communityFeatures).map(f => ({ x: f.x, y: f.y, root: true }));
+  const clearance = (x: number, y: number) => Math.min(...placed.map(p => {
+    const [aw, ah] = half(p.root), [bw, bh] = half(false);
+    return Math.max(Math.abs(x - p.x) / (aw + bw), Math.abs(y - p.y) / (ah + bh)); // > 1 means no overlap
+  }));
+  for (const [g, f] of Object.entries(communityFeatures) as [FeatureGroup, typeof communityFeatures[FeatureGroup]][]) {
+    nodes.filter(n => n.group === g && showcase.has(n.id) && n.id !== f.root).slice(0, 2).forEach(n => {
+      let best = { x: f.x, y: f.y, score: -1 };
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2;
+        const x = f.x + Math.cos(a) * 480, y = f.y + Math.sin(a) * 340;
+        const score = clearance(x, y);
+        if (score > best.score) best = { x, y, score };
+      }
+      n.fx = best.x; n.fy = best.y;
+      placed.push({ x: best.x, y: best.y, root: false });
+    });
+  }
+  const links = seedGraph.links.map(l => ({ ...l })) as unknown as SimLink[];
+  forceSimulation(nodes)
+    .force('charge', forceManyBody().strength(-100))
+    .force('x', forceX<SimNode>(d => communityFeatures[d.group].x).strength(.11))
+    .force('y', forceY<SimNode>(d => communityFeatures[d.group].y).strength(.11))
+    .force('link', forceLink<SimNode, SimLink>(links).id(d => d.id).strength(.25).distance(l => (l.source as SimNode).group === (l.target as SimNode).group ? 74 : 350))
+    .force('collide', forceCollide<SimNode>(d => showcase.has(d.id) ? 46 : isArt(d) ? 8 : 12))
+    .stop()
+    .tick(220);
+  // Each theme's halo grows to cover its members, so large user collections still read as one cluster.
+  const halo = Object.fromEntries((Object.keys(communityFeatures) as FeatureGroup[]).map(g => {
+    const c = communityFeatures[g];
+    const d = nodes.filter(n => n.group === g).map(n => Math.hypot(n.x - c.x, n.y - c.y)).sort((a, b) => a - b);
+    const r = Math.max(190, (d[Math.floor(d.length * .85)] || 0) + 50); // ignore a few stragglers
+    return [g, r];
+  })) as Record<FeatureGroup, number>;
+  return { nodes, links, byId, halo };
+})();
+
+// Artworks that several (fictional) people have studied: clicking them fans the studies out around the original.
+type PeerStudy = ReturnType<typeof peerStudiesForArt>[number];
+const fanStudies = new Map(layout.nodes.filter(isArt).map(n => [n.id, peerStudiesForArt(n.artId)] as const).filter(([, s]) => s.length >= 3));
+// Where each study card lands, in base units around the enlarged original (top-left, top-right, below).
+const fanSlots: [number, number][] = [[-215, -125], [215, -125], [0, 170]];
+
+interface Camera { k: number; x: number; y: number }
+
+/** A completed path of yours, shared from My path: art ids in order, plus your study image. */
+export interface SharedPath { id: string; title: string; path: string[]; study: string }
+type AtlasPath = { id: string; name: string; initials: string; title: string; description: string; nodes: string[]; captions: string[]; mine?: boolean; suggested?: boolean };
+const studyNodeId = (pathId: string) => `my-study-${pathId}`;
+
+interface Props {
+  hideOthers: boolean;
+  myPaths: SharedPath[];
+  goalArtId: string | null;
+  fromArtId: string | null;
+  onOpenArt: (artId: string) => void;
 }
 
-const positionedSeed = layoutGraph();
+export function Atlas({ hideOthers, myPaths, goalArtId, fromArtId, onOpenArt }: Props) {
+  const box = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ w: 800, h: 500 });
+  const [cam, setCam] = useState<Camera>({ k: .6, x: 0, y: 0 });
+  const [pathId, setPathId] = useState<string | null>(null);
+  const [focus, setFocus] = useState<number | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [spread, setSpread] = useState<string | null>(null);
+  // The image whose routes the sidebar shows. Clicking an image on the map selects it; arriving
+  // from an image's Community page ("Paths from here") selects that image.
+  const [selectedArt, setSelectedArt] = useState<string | null>(fromArtId);
+  useEffect(() => { setSelectedArt(fromArtId); }, [fromArtId]);
+  const startArt = selectedArt;
+  // Studies by others never fan out while the viewer has chosen to hide them.
+  const fans: Map<string, PeerStudy[]> = hideOthers ? new Map() : fanStudies;
+  const drag = useRef<{ x: number; y: number; cam: Camera } | null>(null);
 
-export default function Atlas({ session, mode, selectedId, onSelect, pathNodes, pathStep, filter, showPeerStudies, anchorId }: {
-  session: Session;
-  mode: 'community' | 'personal';
-  selectedId: string | null;
-  onSelect: (node: AtlasNode) => void;
-  pathNodes: string[];
-  pathStep: number;
-  filter: 'all' | 'popular' | 'quiet';
-  showPeerStudies: boolean;
-  anchorId: string | null;
-}) {
-  const [camera, setCamera] = useState({ x: 0, y: -35, scale: 1 });
-  const [hovered, setHovered] = useState<string | null>(null);
-  const [revealedIds, setRevealedIds] = useState<Set<string>>(() => new Set());
-  const [lastRevealed, setLastRevealed] = useState<string | null>(null);
-  const [viewHeight, setViewHeight] = useState(700);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const drag = useRef<{ x: number; y: number; cameraX: number; cameraY: number; moved: boolean } | null>(null);
+  // Your study is not part of the shared graph, so it gets a node of its own beside the path's last image.
+  const studyNodes = useMemo(() => new Map(myPaths.map(mp => {
+    const last = layout.byId.get(mp.path[mp.path.length - 1])!;
+    const others = mp.path.map(id => layout.byId.get(id)!);
+    // Try 12 directions around the last step; keep the spot furthest from the path's other images.
+    let best = { x: last.x + 150, y: last.y, d: -1 };
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2, x = last.x + Math.cos(a) * 150, y = last.y + Math.sin(a) * 120;
+      const d = Math.min(...others.map(o => Math.hypot(o.x - x, o.y - y)));
+      if (d > best.d) best = { x, y, d };
+    }
+    return [studyNodeId(mp.id), { ...last, id: studyNodeId(mp.id), kind: 'study', title: mp.title, image: mp.study, person: 'You', x: best.x, y: best.y } as SimNode];
+  })), [myPaths]);
+  const nodeOf = (id: string) => layout.byId.get(id) ?? studyNodes.get(id);
+  // Routes that start at the chosen image, assembled only from the recorded routes above (never anyone's real history).
+  const suggestions = useMemo(() => startArt ? suggestRoutesFrom(startArt, [
+    ...learningPaths,
+    ...myPaths.map(mp => ({ id: mp.id, name: 'You', nodes: mp.path, captions: mp.path.map(() => 'A step from your own path.') })),
+  ]) : [], [startArt, myPaths]);
+  const allPaths: AtlasPath[] = [
+    ...suggestions.map(sg => ({ id: sg.id, name: 'Suggested', initials: '↗', suggested: true, title: sg.title, description: sg.basis, nodes: sg.nodes, captions: sg.captions })),
+    ...myPaths.map(mp => ({
+      id: mp.id, name: 'You', initials: 'You', mine: true, title: mp.title,
+      description: 'Your completed path, shared from My path. Your learning log and notes stay private.',
+      nodes: [...mp.path, studyNodeId(mp.id)],
+      captions: [...mp.path.map((_, i) => i === 0 ? 'Where you started, with your question.' : 'A reference you kept for the same question.'), 'The study you made.'],
+    })),
+    ...learningPaths,
+  ];
+  const path = allPaths.find(p => p.id === pathId) || null;
+
+  const fit = useCallback((ids?: string[]) => {
+    const pts = (ids ? ids.map(id => nodeOf(id)!).filter(Boolean) : layout.nodes);
+    const xs = pts.map(n => n.x), ys = pts.map(n => n.y);
+    const minX = Math.min(...xs) - 70, maxX = Math.max(...xs) + 70, minY = Math.min(...ys) - 70, maxY = Math.max(...ys) + 70;
+    const k = Math.min(1.6, size.w / (maxX - minX), size.h / (maxY - minY));
+    setCam({ k, x: size.w / 2 - ((minX + maxX) / 2) * k, y: size.h / 2 - ((minY + maxY) / 2) * k });
+  }, [size]);
+
   useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-        setViewHeight(1100 * entry.contentRect.height / entry.contentRect.width);
-      }
-    });
-    observer.observe(svg);
-    return () => observer.disconnect();
+    const el = box.current; if (!el) return;
+    const ro = new ResizeObserver(([e]) => setSize({ w: e.contentRect.width, h: e.contentRect.height }));
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
-  const { nodes, links, myIds } = useMemo(() => {
-    const nodes: PositionedNode[] = positionedSeed.map(node => ({ ...node }));
-    const links: AtlasLink[] = seedGraph.links.map(link => ({ ...link }));
-    const myIds = new Set<string>();
-    for (const thread of personalThreads(session)) {
-      let prev: string | null = null;
-      const base = communityFeatures[featureForId(thread.steps[0].artId)];
-      thread.steps.forEach((step, index) => {
-        if (step.kind === 'goal') { myIds.add(step.id); prev = step.id; return; }
-        const art = artById[step.artId];
-        const kind = step.kind === 'study' ? 'study' : step.kind === 'reflection' ? 'reflection' : 'reference';
-        nodes.push({ id: step.id, kind, title: step.title, artId: art.id, cluster: art.cluster, likes: 0, x: base.x - 150 + (index % 4) * 100, y: base.y + 175 + Math.floor(index / 4) * 105, ...(step.kind === 'study' ? { image: step.image, person: 'You', sample: session.practice?.sample } : step.kind === 'reflection' ? { person: 'You', note: step.note } : {}) });
-        if (prev) links.push({ source: prev, target: step.id, kind: kind === 'study' ? 'practice' : kind === 'reflection' ? 'reflection' : 'reference' });
-        if (step.kind === 'study' && session.practice) {
-          for (const artId of session.practice.references) {
-            if (focusForArt(artById[artId]) !== thread.id) continue;
-            const source = thread.steps.find(item => item.artId === artId && item.kind !== 'study' && item.kind !== 'reflection')?.id;
-            if (source && source !== prev) links.push({ source, target: step.id, kind: 'practice' });
-          }
-        }
-        myIds.add(step.id); prev = step.id;
-      });
-    }
-    return { nodes, links, myIds };
-  }, [session]);
-  const pathParentIds = new Set(nodes.filter(node => pathNodes.includes(node.id) && isPeerStudy(node)).map(node => node.parentArtId));
-  const pathEdges = new Set(pathNodes.slice(1).map((id, index) => `${pathNodes[index]}:${id}`));
-  const activePath = new Set(pathNodes.slice(0, pathStep < 0 ? undefined : pathStep + 1));
-  const pathKey = pathNodes.join('|');
-  function isExpanded(node: PositionedNode) {
-    if (isPeerStudy(node)) return showPeerStudies && (revealedIds.has(node.id) || revealedIds.has(node.parentArtId!) || node.id === selectedId || node.parentArtId === selectedId || node.parentArtId === anchorId || node.parentArtId === session.input?.artId || pathNodes.includes(node.id));
-    return previewIds.has(node.id) || revealedIds.has(node.id) || node.id === selectedId || node.id === anchorId || pathNodes.includes(node.id) || pathParentIds.has(node.id) || node.id === session.input?.artId || (myIds.has(node.id) && (mode === 'personal' || node.person === 'You'));
-  }
-  const allNodeMap = new Map(nodes.map(node => [node.id, node]));
-  const visibleNodes = nodes.filter(node => !isPeerStudy(node) || (showPeerStudies && isExpanded(allNodeMap.get(node.parentArtId!)!)));
-  const nodeMap = new Map(visibleNodes.map(node => [node.id, node]));
-  const visiblePathNodes = pathNodes.filter(id => nodeMap.has(id));
-  const showThemeLabels = !pathNodes.length && !anchorId;
-  function activateNode(node: PositionedNode) {
-    if (!isExpanded(node)) {
-      setRevealedIds(previous => new Set(previous).add(node.id));
-      setLastRevealed(node.id);
-      return;
-    }
-    onSelect(node);
-  }
 
-  function fitGraph() {
-    const visible = pathNodes.length ? visibleNodes.filter(node => pathNodes.includes(node.id) || pathParentIds.has(node.id)) : anchorId ? visibleNodes.filter(node => node.id === anchorId || node.parentArtId === anchorId) : mode === 'personal' && session.started ? visibleNodes.filter(node => myIds.has(node.id)) : visibleNodes;
-    if (!visible.length) return;
-    const showThemes = showThemeLabels && !(mode === 'personal' && session.started);
-    const themes = showThemes ? Object.values(communityFeatures) : [];
-    const minX = Math.min(...visible.map(node => node.x), ...themes.map(theme => theme.labelX)) - 85;
-    const maxX = Math.max(...visible.map(node => node.x), ...themes.map(theme => theme.labelX + 300)) + 85;
-    const minY = Math.min(...visible.map(node => node.y), ...themes.map(theme => theme.labelY)) - 100;
-    const maxY = Math.max(...visible.map(node => node.y)) + 105;
-    const scale = Math.min(2.2, 1040 / (maxX - minX), (viewHeight - 85) / (maxY - minY));
-    setCamera({ scale, x: 550 - (minX + maxX) / 2 * scale, y: viewHeight / 2 - (minY + maxY) / 2 * scale - 8 });
-  }
 
+  const startPath = (id: string) => { setPathId(id); setFocus(null); setPicked(null); setSpread(null); };
+  const centerOn = (n: SimNode) => {
+    const k = .75; // grow is 1 here, so the fan is drawn at its natural size and fits the canvas
+    setCam({ k, x: size.w / 2 - n.x * k, y: size.h / 2 - n.y * k });
+  };
+  const toggleSpread = (n: SimNode) => {
+    if (spread === n.id) return setSpread(null);
+    setSpread(n.id); setPicked(null); setPathId(null);
+    centerOn(n);
+  };
+  // Re-frame whenever the canvas resizes or the view changes; an open fan keeps the camera on its image.
   useEffect(() => {
-    setHovered(null);
-    fitGraph();
-  }, [mode, session.started, session.artist, session.input?.artId, session.captures.length, !!session.practice, pathKey, viewHeight, showPeerStudies, anchorId]);
+    if (spread) centerOn(layout.byId.get(spread)!);
+    else if (path) fit(path.nodes);
+    else fit();
+  }, [size, pathId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function zoom(delta: number) {
-    setCamera(old => {
-      const scale = Math.min(3, Math.max(0.3, old.scale + delta));
-      return { scale, x: 550 - ((550 - old.x) / old.scale) * scale, y: viewHeight / 2 - ((viewHeight / 2 - old.y) / old.scale) * scale };
-    });
+  const zoomBy = (f: number, cx = size.w / 2, cy = size.h / 2) => setCam(c => {
+    const k = Math.max(.25, Math.min(3, c.k * f));
+    return { k, x: cx - (cx - c.x) * (k / c.k), y: cy - (cy - c.y) * (k / c.k) };
+  });
+  const onDown = (e: ReactPointerEvent) => {
+    if ((e.target as Element).closest('[data-node],[data-label]')) return;
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    drag.current = { x: e.clientX, y: e.clientY, cam };
+  };
+  const onMove = (e: ReactPointerEvent) => {
+    const d = drag.current; if (!d) return;
+    setCam({ ...d.cam, x: d.cam.x + e.clientX - d.x, y: d.cam.y + e.clientY - d.y });
+  };
+
+  const routeEdges = useMemo(() => {
+    if (!path) return [];
+    return path.nodes.slice(1).map((id, i) => [nodeOf(path.nodes[i])!, nodeOf(id)!] as const);
+  }, [pathId, studyNodes]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Representative images keep a readable size when zoomed out (up to 3.75× their base size).
+  const grow = Math.max(1, Math.min(3.75, .75 / cam.k));
+  const routeIndex = new Map(path ? path.nodes.map((id, i) => [id, i + 1]) : []);
+
+  const recordedPaths = allPaths.filter(p => !p.suggested);
+  const candidatePaths = startArt ? recordedPaths.filter(p => p.nodes.includes(startArt)) : recordedPaths;
+  const selectArt = (artId: string) => { setSelectedArt(artId); setPathId(null); setPicked(null); setSpread(null); setFocus(null); };
+  const pickedNode = picked ? layout.byId.get(picked) : null;
+  const pickedPaths = picked ? recordedPaths.filter(p => p.nodes.includes(picked)) : [];
+
+  return (
+    <div className="atlas">
+      <div className="atlas-canvas" ref={box} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => { drag.current = null; }}
+        onWheel={e => { const r = box.current!.getBoundingClientRect(); zoomBy(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - r.left, e.clientY - r.top); }}>
+        <svg width={size.w} height={size.h}>
+          <defs>
+            <clipPath id="clip-r" clipPathUnits="objectBoundingBox"><rect width="1" height="1" rx=".14" /></clipPath>
+            <clipPath id="clip-c" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5" /></clipPath>
+          </defs>
+          <g transform={`translate(${cam.x} ${cam.y}) scale(${cam.k})`}>
+            {(Object.entries(communityFeatures) as [FeatureGroup, typeof communityFeatures[FeatureGroup]][]).map(([g, f]) => (
+              <circle key={g} cx={f.x} cy={f.y} r={layout.halo[g]} className="atlas-halo" style={{ fill: featureColor[g] }} />
+            ))}
+            <g className={`atlas-links ${path ? 'muted' : ''}`}>
+              {layout.links.map((l, i) => <line key={i} x1={l.source.x} y1={l.source.y} x2={l.target.x} y2={l.target.y} className={l.kind} />)}
+            </g>
+            <g className={`atlas-route ${path?.suggested ? 'suggested' : ''}`}>
+              {routeEdges.map(([a, b], i) => <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />)}
+            </g>
+            {spread && <StudyFan key={`l-${spread}`} part="links" n={layout.byId.get(spread)!} studies={fans.get(spread)!} grow={grow} onOpen={() => onOpenArt(layout.byId.get(spread)!.artId)} />}
+            {layout.nodes.map(n => <AtlasNodeView key={n.id} n={n} idx={routeIndex.get(n.id)} faded={!!path && !routeIndex.has(n.id)} goal={n.id === goalArtId} picked={picked === n.id || (!path && n.id === startArt) || (!!path && focus !== null && path.nodes[focus] === n.id)} grow={grow}
+              fan={fans.get(n.id)?.length} spread={spread === n.id}
+              onClick={() => fans.has(n.id) ? toggleSpread(n) : isArt(n) ? (startArt === n.artId && !path ? onOpenArt(n.artId) : selectArt(n.artId)) : setPicked(n.id)} />)}
+            {path?.mine && (() => {
+              const v = studyNodes.get(path.nodes[path.nodes.length - 1])!;
+              return (
+                <g data-node className="atlas-node my-study in-route" transform={`translate(${v.x} ${v.y})`}>
+                  <title>{`Your study: ${v.title}`}</title>
+                  <rect x={-40} y={-32} width={80} height={64} rx={8} className="frame" style={{ stroke: 'var(--clay)' }} />
+                  <image href={v.image} x={-38} y={-30} width={76} height={60} preserveAspectRatio="xMidYMid meet" />
+                  <text y={48} className="node-title">Your study</text>
+                  <g transform="translate(-42 -34)"><circle r={9} className="idx" /><text className="idx-t" dy="3.5">{path.nodes.length}</text></g>
+                </g>
+              );
+            })()}
+            {spread && <StudyFan key={`c-${spread}`} part="cards" n={layout.byId.get(spread)!} studies={fans.get(spread)!} grow={grow} onOpen={() => onOpenArt(layout.byId.get(spread)!.artId)} />}
+            {/* Theme labels step aside while a path is shown, so they never sit on the route. */}
+            {!path && (Object.entries(communityFeatures) as [FeatureGroup, typeof communityFeatures[FeatureGroup]][]).map(([g, f]) => (
+              <g key={g} data-label className="atlas-label" onClick={() => onOpenArt(f.root)}
+                // Each theme label sits centred just above its own (enlarged) root image, and grows when zoomed out so it stays legible.
+                transform={`translate(${f.x} ${f.y - (120 * .74 / 2) * grow - 8 * Math.max(1, .5 / cam.k)}) scale(${Math.max(1, .5 / cam.k)})`}>
+                <text className="t1" y={-20} style={{ fill: featureColor[g] }}>{f.title}</text>
+                <text className="t2" y={-4}>{f.subject}</text>
+              </g>
+            ))}
+          </g>
+        </svg>
+        <div className="atlas-zoom" onPointerDown={e => e.stopPropagation()}>
+          <button className="icon-btn" onClick={() => zoomBy(1 / 1.2)} aria-label="Zoom out"><Minus size={15} /></button>
+          <span>{Math.round(cam.k * 100)}%</span>
+          <button className="icon-btn" onClick={() => zoomBy(1.2)} aria-label="Zoom in"><Plus size={15} /></button>
+          <i />
+          <button className="icon-btn" onClick={() => path ? fit(path.nodes) : fit()} aria-label="Fit to view"><Maximize size={14} /></button>
+        </div>
+        <div className="atlas-legend"><i className="ref" /> Reference <i className="study" /> Practice <i className="reflection" /> Reflection <i className="tutorial" /> Tutorial <span>· Illustrative learning themes</span></div>
+      </div>
+
+      <aside className="atlas-side">
+        {spread ? (
+          <>
+            <button className="rc-back" onClick={() => setSpread(null)}>← All paths</button>
+            <span className="eyebrow">One image · {fans.get(spread)!.length} people studied it</span>
+            <h3 className="serif">{artById[layout.byId.get(spread)!.artId].title}</h3>
+            <p className="atlas-desc">Same reference, three different hands. Each person copied a different part, in their own way.</p>
+            {fans.get(spread)!.map(st => (
+              <div key={st.id} className="fan-note">
+                <img src={st.image} alt={st.title} />
+                <div><strong>{st.title}</strong><em>{st.person}</em><p>{st.text}</p></div>
+              </div>
+            ))}
+            <span className="rc-prov">{fans.get(spread)![0].provenance}</span>
+            <button className="btn sm primary" onClick={() => selectArt(layout.byId.get(spread)!.artId)}><Route size={13} /> Paths from this image</button>
+            <button className="btn sm" onClick={() => onOpenArt(layout.byId.get(spread)!.artId)}>Open this image's community <ArrowRight size={13} /></button>
+          </>
+        ) : path ? (
+          <>
+            <button className="rc-back" onClick={() => setPathId(null)}>← All paths</button>
+            <span className="eyebrow">{path.suggested ? 'Suggested route · built from recorded paths' : path.mine ? 'Your path · shared to Community' : `${path.name}'s recorded path · demo`}</span>
+            <h3 className="serif">{path.title}</h3>
+            <p className="atlas-desc">{path.description}</p>
+            <ol className="timeline">
+              {path.nodes.map((id, i) => {
+                const n = nodeOf(id)!;
+                const img = n.image || artById[n.artId]?.image;
+                const isMine = id.startsWith('my-study-');
+                return (
+                  <li key={id} className={focus === i ? 'now' : 'past'}>
+                    <button onClick={() => setFocus(focus === i ? null : i)} title="Highlight on the map">
+                      <span className="tl-num">{i + 1}</span>
+                      <img src={img} alt="" className={n.kind === 'study' && !isMine ? 'demo-study' : ''} />
+                      <span className="tl-text"><span className="eyebrow">{i === 0 ? 'Starting point' : isMine ? 'Your study' : n.kind}</span><strong>{n.title}</strong><em>{path.captions[i]}</em></span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </>
+        ) : pickedNode ? (
+          <>
+            <button className="rc-back" onClick={() => setPicked(null)}>← All paths</button>
+            <span className="eyebrow">{pickedNode.kind} · {pickedNode.person || 'demo'}</span>
+            <h3 className="serif">{pickedNode.title}</h3>
+            {pickedNode.note && <p className="atlas-desc">{pickedNode.note}</p>}
+            <p className="atlas-desc">Around <button className="link" onClick={() => onOpenArt(pickedNode.artId)}>{artById[pickedNode.artId].title}</button>.</p>
+            {pickedPaths.length ? pickedPaths.map(p => <PathCard key={p.id} p={p} endTitle={nodeOf(p.nodes[p.nodes.length - 1])!.title} onClick={() => startPath(p.id)} />) : <p className="atlas-desc">No recorded path passes through this note yet.</p>}
+          </>
+        ) : (
+          <>
+            {startArt ? <>
+              <button className="rc-back" onClick={() => setSelectedArt(null)}>← All paths</button>
+              <div className="atlas-start">
+                <img src={artById[startArt].thumb || artById[startArt].image} alt="" />
+                <div><span className="eyebrow">Starting from</span><strong className="serif">{artById[startArt].title}</strong></div>
+              </div>
+              <button className="btn sm" onClick={() => onOpenArt(startArt)}>Open its community page <ArrowRight size={13} /></button>
+            </> : <>
+              <span className="eyebrow">One person’s path. A new way to see.</span>
+              <h3 className="serif">A map of ways to see.</h3>
+              <p className="atlas-desc">Grouped by what people were learning to see — not by film or artist. Choose a far-off result to see exactly how someone got there.</p>
+              <p className="atlas-tip"><Route size={13} /> Click any image on the map to see routes that start from it.</p>
+            </>}
+            {startArt && <>
+              <span className="eyebrow" style={{ marginTop: 6 }}><Route size={11} style={{ verticalAlign: -1 }} /> Suggested routes from here</span>
+              {suggestions.length
+                ? allPaths.filter(p => p.suggested).map(p => <PathCard key={p.id} p={p} endTitle={nodeOf(p.nodes[p.nodes.length - 1])!.title} onClick={() => startPath(p.id)} />)
+                : <p className="atlas-desc">No recorded route leads anywhere from this image yet.</p>}
+              <p className="atlas-note">Put together from routes people recorded — a starting idea, not anyone's actual history.</p>
+            </>}
+            <span className="eyebrow" style={{ marginTop: 6 }}><Route size={11} style={{ verticalAlign: -1 }} /> {startArt ? 'Recorded paths through this image' : 'Find a learning path'}</span>
+            {candidatePaths.length ? candidatePaths.map(p => <PathCard key={p.id} p={p} endTitle={nodeOf(p.nodes[p.nodes.length - 1])!.title} onClick={() => startPath(p.id)} />)
+              : <p className="atlas-desc">No one's recorded path passes through this image yet.</p>}
+          </>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+function PathCard({ p, endTitle, onClick }: { p: AtlasPath; endTitle: string; onClick: () => void }) {
+  return (
+    <button className={`path-card ${p.mine ? 'mine' : ''} ${p.suggested ? 'suggested' : ''}`} onClick={onClick}>
+      <span className={`avatar ${p.mine ? 'you' : ''}`}>{p.initials}</span>
+      <span><strong>{p.title}</strong><em>{p.suggested ? p.description : `${p.mine ? 'Your path' : p.name} · ${p.nodes.length} steps · ends at “${endTitle}”`}</em></span>
+      <ArrowRight size={14} />
+    </button>
+  );
+}
+
+/**
+ * The studies of one image, flying out from behind it to their places around it.
+ * Drawn in two parts so the dashed links sit under the original and the cards sit over the dots.
+ */
+function StudyFan({ n, studies, grow, part, onOpen }: { n: SimNode; studies: PeerStudy[]; grow: number; part: 'links' | 'cards'; onOpen: () => void }) {
+  const [out, setOut] = useState(false);
+  // Start collapsed behind the original, then let the cards fly out (a timer, so it also runs where frames are throttled).
+  useEffect(() => { const t = setTimeout(() => setOut(true), 40); return () => clearTimeout(t); }, []);
+  const W = 190, H = 120;
+  const shown = studies.slice(0, fanSlots.length);
+  return (
+    <g className={`study-fan ${out ? 'out' : ''}`} transform={`translate(${n.x} ${n.y}) scale(${grow})`}>
+      {part === 'links' && shown.map((st, i) => <line key={`l-${st.id}`} x1={0} y1={0} x2={fanSlots[i][0]} y2={fanSlots[i][1]} className="fan-link" style={{ transitionDelay: `${180 + i * 80}ms` }} />)}
+      {part === 'cards' && shown.map((st, i) => (
+        <g key={st.id} data-node className="fan-card" onClick={onOpen}
+          style={{ transform: out ? `translate(${fanSlots[i][0]}px, ${fanSlots[i][1]}px) scale(1)` : 'translate(0px, 0px) scale(.25)', transitionDelay: `${i * 80}ms` }}>
+          <title>{`${st.title} - ${st.person}`}</title>
+          <rect x={-W / 2 - 5} y={-H / 2 - 5} width={W + 10} height={H + 10} rx={8} className="fan-frame" />
+          <image href={st.image} x={-W / 2} y={-H / 2} width={W} height={H} preserveAspectRatio="xMidYMid meet" />
+          <text y={H / 2 + 20} className="fan-name">{st.person}</text>
+          <text y={H / 2 + 33} className="fan-title">{st.title}</text>
+        </g>
+      ))}
+    </g>
+  );
+}
+
+function AtlasNodeView({ n, idx, faded, goal, picked, grow, fan, spread, onClick }: { n: SimNode; idx?: number; faded: boolean; goal: boolean; picked: boolean; grow: number; fan?: number; spread: boolean; onClick: () => void }) {
+  const art = artById[n.artId];
+  const cls = `atlas-node ${n.kind} ${faded ? 'faded' : ''} ${idx ? 'in-route' : ''} ${picked ? 'picked' : ''}`;
+  // Images only where they carry meaning: cluster highlights, the shown route, your goal, or what you picked.
+  const asImage = showcase.has(n.id) || !!idx || goal || picked;
+  let body;
+  if (isArt(n) && !asImage) {
+    body = <circle r={4.5} className="art-dot" style={{ fill: featureColor[n.group] }} />;
+  } else if (n.kind === 'study' && !asImage) {
+    body = <circle r={4} className="study-dot" />;
+  } else if (isArt(n)) {
+    // Opened for its studies, the original shows whole, at its true proportions (fits a 110×110 box).
+    const r = art.ratio || 1 / .74;
+    const w = spread ? (r >= 1 ? 110 : 110 * r) : themeRoots.has(n.id) ? 120 : 92;
+    const h = spread ? w / r : w * .74;
+    body = <>
+      {goal && <rect x={-w / 2 - 6} y={-h / 2 - 6} width={w + 12} height={h + 12} rx={10} className="goal-ring" />}
+      <rect x={-w / 2 - 2} y={-h / 2 - 2} width={w + 4} height={h + 4} rx={8} className="frame" style={{ stroke: featureColor[n.group] }} />
+      <image href={spread ? art.image : art.thumb || art.image} x={-w / 2} y={-h / 2} width={w} height={h} preserveAspectRatio={spread ? 'xMidYMid meet' : 'xMidYMid slice'} clipPath="url(#clip-r)" />
+      {themeRoots.has(n.id) && <text y={h / 2 + 16} className="node-title">{n.title}</text>}
+      {goal && <text y={-h / 2 - 12} className="node-goal">You started here</text>}
+      {fan && !spread && <g className="fan-badge" transform={`translate(0 ${h / 2 + 4})`}><rect x={-30} y={-8} width={60} height={16} rx={8} /><text dy={3.5}>{fan} studies</text></g>}
+    </>;
+  } else if (n.kind === 'study') {
+    body = <><circle r={13} className="ring" /><image href={art.image} x={-11} y={-11} width={22} height={22} preserveAspectRatio="xMidYMid slice" clipPath="url(#clip-c)" className="demo-study" /></>;
+  } else {
+    body = <circle r={n.kind === 'tutorial' ? 7 : 5.5} className="dot" />;
   }
-
-  return <div className={`atlas-canvas ${mode === 'personal' && session.started ? 'personal-view' : ''}`}>
-    <div className="canvas-grain" />
-    <svg ref={svgRef} className="network" viewBox={`0 0 1100 ${viewHeight}`} aria-label="Interactive learning atlas. Click a dot to reveal its image, then click the image to explore."
-      onWheel={event => { if (event.ctrlKey || event.metaKey) event.preventDefault(); zoom(event.deltaY > 0 ? -0.055 : 0.055); }}
-      onPointerDown={event => { if ((event.target as Element).closest('[data-node]')) return; drag.current = { x: event.clientX, y: event.clientY, cameraX: camera.x, cameraY: camera.y, moved: false }; event.currentTarget.setPointerCapture(event.pointerId); }}
-      onPointerMove={event => { if (!drag.current || !svgRef.current) return; const ratio = 1100 / svgRef.current.clientWidth; const dx = (event.clientX - drag.current.x) * ratio; const dy = (event.clientY - drag.current.y) * ratio; if (Math.abs(dx) + Math.abs(dy) > 4) drag.current.moved = true; setCamera({ ...camera, x: drag.current.cameraX + dx, y: drag.current.cameraY + dy }); }}
-      onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>
-      <defs>
-        <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="0.75" fill="#4c5950" opacity="0.33" /></pattern>
-        <filter id="glow"><feGaussianBlur stdDeviation="4" /></filter>
-      </defs>
-      <rect width="1100" height={viewHeight} fill="url(#dots)" />
-      <g transform={`translate(${camera.x} ${camera.y}) scale(${camera.scale})`}>
-        {Object.entries(communityFeatures).map(([key, cluster]) => <g key={`halo-${key}`} className={`cluster-halo ${mode === 'personal' && session.started && featureForId(session.input?.artId || 'kfp-goal') !== key ? 'muted' : ''}`}>
-          <ellipse cx={cluster.x} cy={cluster.y} rx={230} ry={220} fill={cluster.color} opacity="0.025" />
-        </g>)}
-        {links.map((link, index) => {
-          const source = nodeMap.get(link.source); const target = nodeMap.get(link.target);
-          if (!source || !target) return null;
-          const isMine = myIds.has(source.id) && myIds.has(target.id) && session.started;
-          const isPath = pathEdges.has(`${source.id}:${target.id}`) || pathEdges.has(`${target.id}:${source.id}`);
-          if (link.kind === 'journey' && !isPath) return null;
-          const visible = isMine || isPath || !(mode === 'personal' && session.started);
-          const child = link.kind === 'practice' && isPeerStudy(target);
-          return <path key={`edge-${index}`} data-parent-art={child ? source.artId : undefined} className={`graph-edge ${child ? 'peer-child-edge' : ''} ${isMine ? 'mine' : ''} ${isPath ? 'traced' : ''}`} d={child ? `M ${source.x} ${source.y + 65} Q ${source.x} ${target.y - 65} ${target.x} ${target.y - 35}` : `M ${source.x} ${source.y} Q ${(source.x + target.x) / 2 + (index % 2 ? 10 : -10)} ${(source.y + target.y) / 2 - 12} ${target.x} ${target.y}`} opacity={visible ? 1 : 0.08} />;
-        })}
-        {visiblePathNodes.slice(1).map((id, index) => {
-          const source = nodeMap.get(visiblePathNodes[index]); const target = nodeMap.get(id);
-          if (!source || !target) return null;
-          return <path key={`path-${index}`} className={`path-connection ${pathStep >= 0 && pathNodes.indexOf(id) > pathStep ? 'future' : ''}`} d={`M ${source.x} ${source.y} Q ${(source.x + target.x) / 2} ${(source.y + target.y) / 2 - 25} ${target.x} ${target.y}`} />;
-        })}
-        {[...visibleNodes].sort((a, b) => Number(isExpanded(a)) - Number(isExpanded(b)) || Number(a.id === lastRevealed) - Number(b.id === lastRevealed)).map(node => {
-          const isMine = myIds.has(node.id) && session.started;
-          const root = node.id === communityFeatures[featureForId(node.artId)].root || node.id === session.input?.artId;
-          const dimmed = (mode === 'personal' && session.started && !isMine) || (filter === 'popular' && node.likes < 16 && !root && !isMine) || (filter === 'quiet' && node.likes > 16 && !root && !isMine) || (pathNodes.length > 0 && !pathNodes.includes(node.id) && !isMine);
-          const selected = node.id === selectedId || node.id === lastRevealed;
-          const expanded = isExpanded(node);
-          const hoveredNode = hovered === node.id;
-          const baseSize = root ? 92 : node.kind === 'reflection' ? 23 : node.kind === 'tutorial' ? 46 : isMine ? 65 : isPeerStudy(node) ? 50 : 64;
-          const size = baseSize * Math.min(1.55, 1 / Math.sqrt(camera.scale));
-          const art = artById[node.artId];
-          const color = isMine || activePath.has(node.id) ? '#d6ebad' : communityFeatures[featureForId(node.artId)].color;
-          return <g key={node.id} data-node={node.id} data-parent-art={node.parentArtId} data-preview={expanded ? 'image' : 'dot'} className={`art-node ${isPeerStudy(node) ? 'peer-study-node' : ''} ${expanded ? 'thumbnail-node' : 'dot-node'} ${selected ? 'selected' : ''} ${isMine ? 'my-node' : ''} ${node.kind === 'study' && node.sample ? 'sample-study' : ''}`} transform={`translate(${node.x} ${node.y})`} opacity={dimmed ? 0.15 : 1} role="button" tabIndex={0} aria-expanded={expanded} aria-label={`${!expanded ? 'Reveal ' : ''}${node.kind}: ${node.title}${node.person ? ` by ${node.person}` : ''}`}
-            onClick={() => activateNode(node)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); activateNode(node); } }} onMouseEnter={() => setHovered(node.id)} onMouseLeave={() => setHovered(null)}>
-            <title>{node.title}{node.person ? ` · ${node.person} · Demo study` : ''}</title>
-            {!expanded ? <><circle className="dot-hit-area" r="12" fill="transparent" /><circle className="node-dot" r={node.kind === 'reflection' ? 3.5 : 4.5} fill={color} opacity={node.kind === 'reflection' ? 0.6 : 0.9} /><circle className="dot-hover-ring" r="9" fill="none" stroke={color} strokeWidth="1.5" /></> : <>
-            {(selected || activePath.has(node.id)) && <rect x={-size / 2 - 9} y={-size / 2 - 9} width={size + 18} height={size + 18} rx={root ? 15 : 12} fill="none" stroke={color} opacity="0.35" strokeWidth="1" />}
-            <rect className="node-frame" x={-size / 2 - 3} y={-size / 2 - 3} width={size + 6} height={size + 6} rx={root ? 11 : 7} fill={node.kind === 'reflection' ? '#282b25' : '#252c29'} stroke={selected || isMine ? color : '#566158'} strokeWidth={selected || isMine ? 2 : 0.8} />
-            {node.kind === 'reflection' ? <Quote x={-7} y={-7} width={14} height={14} color={color} /> : <>
-              <defs><clipPath id={`clip-${node.id}`}><rect x={-size / 2} y={-size / 2} width={size} height={size} rx={root ? 8 : 4} /></clipPath></defs>
-              <image className={node.kind === 'study' && node.sample ? `study-filter filter-${node.id.length % 3}` : ''} href={node.image || art.image} x={-size / 2} y={-size / 2} width={size} height={size} preserveAspectRatio={isPeerStudy(node) ? 'xMidYMid meet' : 'xMidYMid slice'} clipPath={`url(#clip-${node.id})`} />
-              {node.kind === 'tutorial' && <Video x={-8} y={-8} width={16} height={16} color="white" />}
-            </>}
-            {root && <><circle cx={size / 2 - 3} cy={size / 2 - 2} r="10" fill={color} /><Sparkles x={size / 2 - 9} y={size / 2 - 8} width="12" height="12" color="#263127" /></>}
-            </>}
-            {expanded && isMine && (node.kind !== 'artwork' || node.id === session.input?.artId) && <text y={size / 2 + 21} textAnchor="middle" fill="#dbe4d1" fontSize="11">{node.id === session.input?.artId ? 'Learning goal · Instagram' : node.kind === 'reflection' ? 'Your reflection' : node.person === 'You' ? 'Your study' : session.captures.find(item => `capture-${item.id}` === node.id)?.platform}</text>}
-            {(hoveredNode || selected) && !isMine && <g className="node-tooltip" transform={`translate(0 ${expanded ? -size / 2 - 31 : -36})`}><rect x={-Math.min(node.title.length * 3.3 + 12, 125)} width={Math.min(node.title.length * 6.6 + 24, 250)} height="24" rx="5" fill="#e5e9df" /><text y="16" textAnchor="middle" fontSize="11" fill="#1c251e">{node.title.length > 35 ? `${node.title.slice(0, 33)}…` : node.title}</text></g>}
-            {pathNodes.includes(node.id) && <g transform={`translate(${-size / 2 - 4} ${-size / 2 - 4})`}><circle r="10" fill="#d6ebad" /><text textAnchor="middle" y="4" fontSize="10" fill="#253021" fontWeight="700">{pathNodes.indexOf(node.id) + 1}</text></g>}
-          </g>;
-        })}
-        {showThemeLabels && Object.entries(communityFeatures).map(([key, cluster]) => <g key={`label-${key}`} data-node={`theme-${key}`} className="cluster-label" transform={`translate(${cluster.labelX} ${cluster.labelY})`} opacity={mode === 'personal' && session.started && featureForId(session.input?.artId || 'kfp-goal') !== key ? 0.15 : 1} onClick={() => onSelect(seedGraph.nodes.find(node => node.id === cluster.root)!)} role="button" tabIndex={0} onKeyDown={event => { if (event.key === 'Enter') onSelect(seedGraph.nodes.find(node => node.id === cluster.root)!); }} aria-label={`Explore theme ${cluster.title}`}>
-          <circle cx="0" cy="0" r="3" fill={cluster.color} />
-          <text x="12" y="4" fill={cluster.color} fontSize={Math.min(56, 23 / camera.scale, 430 / (cluster.subtitle.length * 0.6))} fontWeight="500">{cluster.subtitle}</text>
-          <text x="12" y={Math.min(46, 29 / camera.scale)} fill="#829086" fontSize={Math.min(28, 13 / camera.scale)}>{seedGraph.nodes.filter(node => featureForId(node.artId) === key && (node.kind === 'artwork' || node.kind === 'reference')).length} references · click to explore</text>
-        </g>)}
-      </g>
-    </svg>
-    <div className="canvas-top-note"><span className="live-spark" /><span>{pathNodes.length ? 'One person’s path. A new way to see.' : session.started && mode === 'personal' ? `1 learning goal · ${session.captures.length} references · ${session.practice ? '1 study' : 'a study waiting to happen'}` : 'A shared atlas of small discoveries'}<small>{lastRevealed ? `${nodeMap.get(lastRevealed)?.title} · click again to explore` : 'Click a dot to reveal its image. Click again to explore.'}</small></span></div>
-    {revealedIds.size > 0 && <button className="reset-previews" onClick={() => { setRevealedIds(new Set()); setLastRevealed(null); }}>Reset previews</button>}
-    <div className="canvas-legend"><span><i className="dot lime" />Reference</span><span><i className="dot lilac" />Practice</span><span><i className="dot sand" />Reflection</span></div>
-    <div className="canvas-tools"><button aria-label="Zoom out" onClick={() => zoom(-0.2)}><Minus size={16} /></button><span>{Math.round(camera.scale * 100)}%</span><button aria-label="Zoom in" onClick={() => zoom(0.2)}><Plus size={16} /></button><div className="tool-separator" /><button aria-label="Fit graph to view" onClick={fitGraph}><Expand size={16} /></button></div>
-    {!session.started && <div className="canvas-caption"><Route size={15} /><span>Every connection is a step someone took.</span></div>}
-  </div>;
+  return (
+    <g data-node className={`${cls} ${spread ? 'spread' : ''}`} transform={`translate(${n.x} ${n.y}) scale(${(showcase.has(n.id) ? grow : 1) * (spread ? 1.5 : 1)})`} onClick={onClick}>
+      <title>{n.title}</title>
+      {body}
+      {idx && <g transform="translate(-22 -22)"><circle r={9} className="idx" /><text className="idx-t" dy="3.5">{idx}</text></g>}
+    </g>
+  );
 }

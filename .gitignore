@@ -1,6 +1,5 @@
-node_modules/
-dist/
-.sites-runtime/
-.DS_Store
-*.local
+.env.local
+node_modules
+dist
 *.tsbuildinfo
+.claude/
