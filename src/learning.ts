@@ -5,15 +5,15 @@ export type LearningFocus = 'world-design' | 'painted-color';
 export type FeatureGroup = 'character' | 'depth' | 'marks' | 'light';
 
 export const learningFocuses = {
-  'world-design': { title: 'Character & world design', subtitle: '角色与世界塑造', color: '#dbd8ac', question: 'How do shape, expression, and spatial layers build a believable world?', cues: ['silhouette', 'shape', 'depth', 'composition'] },
-  'painted-color': { title: 'Painterly color & brushwork', subtitle: '笔触、点状色彩与光色研究', color: '#a9cdd6', question: 'How do marks, edges, and color relationships guide the eye?', cues: ['color relationships', 'brushwork', 'soft edges', 'painted marks'] },
+  'world-design': { title: 'Character & world design', subtitle: 'Silhouette, shape & spatial depth', color: '#dbd8ac', question: 'How do shape, expression, and spatial layers build a believable world?', cues: ['silhouette', 'shape', 'depth', 'composition'] },
+  'painted-color': { title: 'Painterly color & brushwork', subtitle: 'Brushwork, color relationships & light', color: '#a9cdd6', question: 'How do marks, edges, and color relationships guide the eye?', cues: ['color relationships', 'brushwork', 'soft edges', 'painted marks'] },
 };
 
 export const communityFeatures = {
-  character: { title: 'Stylized character design', subtitle: '动画风格角色塑造', subject: 'Shape, gesture & expression', root: 'kfp-outpost', color: '#e5ca9c', x: 380, y: 255, labelX: 240, labelY: 25 },
-  depth: { title: 'Cinematic depth & composition', subtitle: '空间层次与构图', subject: 'Silhouette, scale & atmosphere', root: 'kfp-goal', color: '#a9ceca', x: 830, y: 405, labelX: 680, labelY: 160 },
-  marks: { title: 'Color dabs & visual rhythm', subtitle: '点状笔触与色彩节奏', subject: 'Color contrast & directional marks', root: 'starry', color: '#d6e8ad', x: 210, y: 610, labelX: 65, labelY: 400 },
-  light: { title: 'Soft light & color relationships', subtitle: '柔光与颜色关系', subject: 'Soft edges, reflections & warm / cool', root: 'lilies', color: '#afa6de', x: 650, y: 735, labelX: 490, labelY: 535 },
+  character: { title: 'Stylized character design', subtitle: 'Character design', subject: 'Shape, gesture & expression', root: 'kfp-outpost', color: '#e5ca9c', x: 380, y: 255, labelX: 240, labelY: 25 },
+  depth: { title: 'Cinematic depth & composition', subtitle: 'Depth & composition', subject: 'Silhouette, scale & atmosphere', root: 'kfp-goal', color: '#a9ceca', x: 830, y: 405, labelX: 680, labelY: 160 },
+  marks: { title: 'Color dabs & visual rhythm', subtitle: 'Color & brushwork', subject: 'Color contrast & directional marks', root: 'starry', color: '#d6e8ad', x: 210, y: 610, labelX: 65, labelY: 400 },
+  light: { title: 'Soft light & color relationships', subtitle: 'Light & color', subject: 'Soft edges, reflections & warm / cool', root: 'lilies', color: '#afa6de', x: 650, y: 735, labelX: 490, labelY: 535 },
 };
 
 // Explicit feature-tag inference for this interactive demo; no live model call.
